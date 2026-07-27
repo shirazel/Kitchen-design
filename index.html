@@ -442,10 +442,12 @@
                     </select>
                 </div>
                 <div id="prop-front-wrap" class="flex-1">
-                    <label class="text-[11px] text-slate-500 mb-0.5 block text-center">כיוון חזית (דלתות/מגירות)</label>
+                    <label class="text-[11px] text-slate-500 mb-0.5 block text-center">לאיזה כיוון פונה החזית</label>
                     <select id="prop-front" class="w-full border border-slate-300 rounded p-1 text-center text-sm font-bold text-slate-700 bg-white">
-                        <option value="front">רגיל</option>
-                        <option value="back">הפוך (לצד השני)</option>
+                        <option value="front">קדימה (רגיל)</option>
+                        <option value="back">אחורה (הפוך)</option>
+                        <option value="right">ימינה (הצידה)</option>
+                        <option value="left">שמאלה (הצידה)</option>
                     </select>
                 </div>
             </div>
@@ -1859,8 +1861,25 @@
                 mesh.receiveShadow = true;
                 itemGroup.add(mesh);
 
-                // כיוון החזית (דלתות/מגירות) - 1 = כרגיל, -1 = הפוך לצד השני (שימושי באי מטבח מול כיסאות)
-                const frontSign = (el.dataset.front === 'back') ? -1 : 1;
+                // לאיזה כיוון עולם פונה החזית (דלתות/מגירות/ידית): front=Z+, back=Z-, right=X+, left=X-
+                // חשוב לארונות שצמודים לקיר צד (לא רק לקיר אחורי) - שם החזית צריכה לפנות ל-X ולא ל-Z
+                const faceDirRaw = el.dataset.front || 'front';
+                let faceAxis, faceSign, faceW;
+                if (faceDirRaw === 'back') { faceAxis = 'z'; faceSign = -1; faceW = w; }
+                else if (faceDirRaw === 'right') { faceAxis = 'x'; faceSign = 1; faceW = d; }
+                else if (faceDirRaw === 'left') { faceAxis = 'x'; faceSign = -1; faceW = d; }
+                else { faceAxis = 'z'; faceSign = 1; faceW = w; }
+                const faceThickness = (faceAxis === 'z') ? d : w;
+
+                // ממיר קואורדינטת "לאורך החזית" (u) ומרחק מהחזית (offset) לקואורדינטות אמיתיות של הפריט
+                const facePos = (u, vY, offset) => {
+                    const n = faceSign * (faceThickness / 2 + offset);
+                    return (faceAxis === 'z') ? [u, vY, n] : [n, vY, u];
+                };
+                // קופסה שמכוונת נכון לפי ציר החזית: רוחב לאורך u, גובה Y, עובי לאורך הנורמל לחזית
+                const faceBox = (uSize, ySize, thickSize) => (faceAxis === 'z')
+                    ? new THREE.BoxGeometry(uSize, ySize, thickSize)
+                    : new THREE.BoxGeometry(thickSize, ySize, uSize);
 
                 // קצוות בולטים רק לדברים שהם לא משטח חלק
                 if (type === 'base' || type === 'drawers' || type === 'tall' || type === 'ceiling-cabinet' || type === 'upper-cabinet' || type === 'upper-to-ceiling' || type === 'shelves' || type === 'oven-built-in') {
@@ -1870,79 +1889,79 @@
                     mesh.add(line);
 
                     if (type === 'drawers') {
-                        // ארון מגירות - קווי חלוקה אופקיים + ידית אופקית לכל מגירה
+                        // ארון מגירות - קווי חלוקה אופקיים + ידית אופקית לכל מגירה, במרכז החזית בלבד
                         const numDrawers = Math.max(2, Math.round(h / 30));
                         const drawerH = h / numDrawers;
-                        const handleGeo = new THREE.BoxGeometry(Math.max(10, w * 0.4), 1.5, 2);
+                        const sepMat = new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0.3, transparent: true });
                         for (let i = 0; i < numDrawers; i++) {
                             const drawerCenterY = (h / 2) - (drawerH * (i + 0.5));
                             if (i > 0) {
-                                const sepGeo = new THREE.BoxGeometry(w - 1, 0.3, 0.3);
-                                const sepMat = new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0.3, transparent: true });
-                                const separator = new THREE.Mesh(sepGeo, sepMat);
-                                separator.position.set(0, (h / 2) - (drawerH * i), frontSign * (d / 2 + 0.1));
+                                const separator = new THREE.Mesh(faceBox(faceW - 1, 0.3, 0.3), sepMat);
+                                const [sx, sy, sz] = facePos(0, (h / 2) - (drawerH * i), 0.1);
+                                separator.position.set(sx, sy, sz);
                                 itemGroup.add(separator);
                             }
-                            const handle = new THREE.Mesh(handleGeo, matMetal);
-                            handle.position.set(0, drawerCenterY, frontSign * (d / 2 + 1));
+                            const handle = new THREE.Mesh(faceBox(Math.max(10, faceW * 0.4), 1.5, 2), matMetal);
+                            const [hx, hy, hz] = facePos(0, drawerCenterY, 1);
+                            handle.position.set(hx, hy, hz);
                             itemGroup.add(handle);
                         }
                     } else if (type === 'oven-built-in') {
-                        // תנור בילד-אין - חזית עם "דלת זכוכית" כהה וידית אופקית
-                        const doorGeo = new THREE.BoxGeometry(w - 8, h - 8, 0.5);
+                        // תנור בילד-אין - חזית עם "דלת זכוכית" כהה וידית אופקית במרכז החזית
                         const doorMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.3, metalness: 0.4 });
-                        const door = new THREE.Mesh(doorGeo, doorMat);
-                        door.position.set(0, 0, frontSign * (d / 2 + 0.3));
+                        const door = new THREE.Mesh(faceBox(faceW - 8, h - 8, 0.5), doorMat);
+                        const [dx, dy, dz] = facePos(0, 0, 0.3);
+                        door.position.set(dx, dy, dz);
                         itemGroup.add(door);
 
-                        const handleGeo = new THREE.BoxGeometry(w * 0.6, 2, 2);
-                        const handle = new THREE.Mesh(handleGeo, matMetal);
-                        handle.position.set(0, 0, frontSign * (d / 2 + 1.5)); // ידית במרכז הדלת
+                        const handle = new THREE.Mesh(faceBox(faceW * 0.6, 2, 2), matMetal);
+                        const [hx, hy, hz] = facePos(0, 0, 1.5);
+                        handle.position.set(hx, hy, hz);
                         itemGroup.add(handle);
                     } else if (type !== 'shelves') {
-                        // ארונות עם דלתות רגילות (base, tall, ceiling-cabinet, upper-cabinet) - מדפים פתוחים ללא דלתות/ידיות
-                        const isDoubleDoor = w >= 80; // ארונות רחבים יקבלו 2 דלתות
-                        const handleGeo = new THREE.BoxGeometry(1.5, 18, 2); // צורת וגודל הידית
-
-                        const handleY = 0; // ידית במרכז גובה הדלת
+                        // ארונות עם דלתות רגילות (base, tall, ceiling-cabinet, upper-cabinet, upper-to-ceiling) - מדפים פתוחים ללא דלתות/ידיות
+                        const isDoubleDoor = faceW >= 80; // ארונות רחבים (לפי רוחב החזית בפועל) יקבלו 2 דלתות
 
                         if (isDoubleDoor) {
-                            // פס חלוקה באמצע מדמה שתי דלתות
-                            const sepGeo = new THREE.BoxGeometry(0.3, h - 1, 0.3);
+                            // פס חלוקה באמצע מדמה שתי דלתות, במרכז החזית
                             const sepMat = new THREE.MeshBasicMaterial({color: 0x000000, opacity: 0.3, transparent: true});
-                            const separator = new THREE.Mesh(sepGeo, sepMat);
-                            separator.position.set(0, 0, frontSign * (d / 2 + 0.1)); // ממוקם בחזית
+                            const separator = new THREE.Mesh(faceBox(0.3, h - 1, 0.3), sepMat);
+                            const [sx, sy, sz] = facePos(0, 0, 0.1);
+                            separator.position.set(sx, sy, sz);
                             itemGroup.add(separator);
 
-                            // 2 ידיות במרכז הדלתות
-                            const handle1 = new THREE.Mesh(handleGeo, matMetal);
-                            const handle2 = new THREE.Mesh(handleGeo, matMetal);
-                            handle1.position.set(-4, handleY, frontSign * (d / 2 + 1));
-                            handle2.position.set(4, handleY, frontSign * (d / 2 + 1));
+                            // 2 ידיות במרכז הדלתות, בחזית בלבד
+                            const handle1 = new THREE.Mesh(faceBox(1.5, 18, 2), matMetal);
+                            const handle2 = new THREE.Mesh(faceBox(1.5, 18, 2), matMetal);
+                            const [h1x, h1y, h1z] = facePos(-4, 0, 1);
+                            const [h2x, h2y, h2z] = facePos(4, 0, 1);
+                            handle1.position.set(h1x, h1y, h1z);
+                            handle2.position.set(h2x, h2y, h2z);
                             itemGroup.add(handle1);
                             itemGroup.add(handle2);
                         } else {
-                            // דלת אחת - ידית בצד שמאל או ימין לפי בחירה
+                            // דלת אחת - ידית בצד שמאל או ימין לפי בחירה, במרכז גובה החזית ובחזית בלבד
                             const handleSide = el.dataset.handle || 'left';
                             if (handleSide !== 'none') {
-                                const handle = new THREE.Mesh(handleGeo, matMetal);
-                                const handleX = handleSide === 'right' ? (w / 2 - 6) : (-w / 2 + 6);
-                                handle.position.set(handleX, handleY, frontSign * (d / 2 + 1));
+                                const handle = new THREE.Mesh(faceBox(1.5, 18, 2), matMetal);
+                                const handleU = handleSide === 'right' ? (faceW / 2 - 6) : (-faceW / 2 + 6);
+                                const [hx, hy, hz] = facePos(handleU, 0, 1);
+                                handle.position.set(hx, hy, hz);
                                 itemGroup.add(handle);
                             }
                         }
                     }
                 } else if (type === 'oven') {
-                    // תנור עומד חופשי - חזית כהה עם ידית מלאה לרוחב
-                    const doorGeo = new THREE.BoxGeometry(w - 6, h - 6, 0.5);
+                    // תנור עומד חופשי - חזית כהה עם ידית מלאה לרוחב, במרכז החזית בלבד
                     const doorMat = new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.3, metalness: 0.5 });
-                    const door = new THREE.Mesh(doorGeo, doorMat);
-                    door.position.set(0, 0, frontSign * (d / 2 + 0.3));
+                    const door = new THREE.Mesh(faceBox(faceW - 6, h - 6, 0.5), doorMat);
+                    const [dx, dy, dz] = facePos(0, 0, 0.3);
+                    door.position.set(dx, dy, dz);
                     itemGroup.add(door);
 
-                    const handleGeo = new THREE.BoxGeometry(w * 0.8, 2.5, 2.5);
-                    const handle = new THREE.Mesh(handleGeo, matMetal);
-                    handle.position.set(0, 0, frontSign * (d / 2 + 1.5)); // ידית במרכז הדלת
+                    const handle = new THREE.Mesh(faceBox(faceW * 0.8, 2.5, 2.5), matMetal);
+                    const [hx, hy, hz] = facePos(0, 0, 1.5);
+                    handle.position.set(hx, hy, hz);
                     itemGroup.add(handle);
                 }
 
