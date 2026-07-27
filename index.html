@@ -1899,8 +1899,8 @@
                         const handle = new THREE.Mesh(handleGeo, matMetal);
                         handle.position.set(0, 0, frontSign * (d / 2 + 1.5)); // ידית במרכז הדלת
                         itemGroup.add(handle);
-                    } else {
-                        // ארונות עם דלתות רגילות (base, tall, ceiling-cabinet, upper-cabinet)
+                    } else if (type !== 'shelves') {
+                        // ארונות עם דלתות רגילות (base, tall, ceiling-cabinet, upper-cabinet) - מדפים פתוחים ללא דלתות/ידיות
                         const isDoubleDoor = w >= 80; // ארונות רחבים יקבלו 2 דלתות
                         const handleGeo = new THREE.BoxGeometry(1.5, 18, 2); // צורת וגודל הידית
 
