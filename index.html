@@ -432,24 +432,23 @@
             <!-- סוף קוד חדש -->
 
             <!-- התחלת קוד חדש: בחירת צד ידית וכיוון חזית לארון -->
-            <div class="flex gap-2">
-                <div id="prop-handle-wrap" class="flex-1">
-                    <label class="text-[11px] text-slate-500 mb-0.5 block text-center">צד ידית (ל-3D)</label>
-                    <select id="prop-handle" class="w-full border border-slate-300 rounded p-1 text-center text-sm font-bold text-slate-700 bg-white">
-                        <option value="left">שמאל</option>
-                        <option value="right">ימין</option>
-                        <option value="none">ללא ידית</option>
-                    </select>
-                </div>
-                <div id="prop-front-wrap" class="flex-1">
-                    <label class="text-[11px] text-slate-500 mb-0.5 block text-center">לאיזה כיוון פונה החזית</label>
-                    <select id="prop-front" class="w-full border border-slate-300 rounded p-1 text-center text-sm font-bold text-slate-700 bg-white">
-                        <option value="front">קדימה (רגיל)</option>
-                        <option value="back">אחורה (הפוך)</option>
-                        <option value="right">ימינה (הצידה)</option>
-                        <option value="left">שמאלה (הצידה)</option>
-                    </select>
-                </div>
+            <div id="prop-front-wrap" class="bg-amber-50 border border-amber-300 rounded p-1.5">
+                <label class="text-[11px] text-amber-800 font-bold mb-0.5 block text-center">לאיזה כיוון פונה החזית (דלתות/ידיות/ברז)</label>
+                <select id="prop-front" class="w-full border border-slate-300 rounded p-1 text-center text-sm font-bold text-slate-700 bg-white">
+                    <option value="front">קדימה (רגיל)</option>
+                    <option value="back">אחורה (הפוך)</option>
+                    <option value="right">ימינה (הצידה)</option>
+                    <option value="left">שמאלה (הצידה)</option>
+                </select>
+            </div>
+
+            <div id="prop-handle-wrap">
+                <label class="text-[11px] text-slate-500 mb-0.5 block text-center">צד ידית (ל-3D)</label>
+                <select id="prop-handle" class="w-full border border-slate-300 rounded p-1 text-center text-sm font-bold text-slate-700 bg-white">
+                    <option value="left">שמאל</option>
+                    <option value="right">ימין</option>
+                    <option value="none">ללא ידית</option>
+                </select>
             </div>
             <!-- סוף קוד חדש -->
 
@@ -522,7 +521,7 @@
         // סוגי פריטים שיש להם דלת/ידית ב-3D (לא רלוונטי לכיור, כיריים, מקרר וכו')
         const HANDLE_TYPES = ['base', 'drawers', 'tall', 'ceiling-cabinet', 'upper-cabinet', 'upper-to-ceiling', 'oven-built-in'];
         // סוגי פריטים שאפשר להפוך את כיוון החזית שלהם (דלתות/מגירות פונות לצד השני - שימושי באי מטבח)
-        const FRONT_TYPES = ['base', 'drawers', 'tall', 'ceiling-cabinet', 'upper-cabinet', 'upper-to-ceiling', 'oven-built-in', 'oven'];
+        const FRONT_TYPES = ['base', 'drawers', 'tall', 'ceiling-cabinet', 'upper-cabinet', 'upper-to-ceiling', 'oven-built-in', 'oven', 'sink'];
 
         let selectedElement = null;
         let isDrawingMode = false;
@@ -1688,37 +1687,54 @@
                         itemGroup.add(seg_mesh);
                     });
 
-                    // ברז - צמוד לרצועה האחורית, בצד הקיר
-                    const faucetZ = -d / 2 + lipD / 2;
+                    // ברז - לאיזה קיר הכיור צמוד קובע לאיזה צד הברז מוצמד (front=ברירת מחדל/קיר אחורי, back=קיר קדמי, right/left=קיר צד)
+                    const sinkFaceDir = el.dataset.front || 'front';
+                    let faucetX = 0, faucetZ = 0, faucetOnX = false;
+                    if (sinkFaceDir === 'back') { faucetZ = d / 2 - lipD / 2; }
+                    else if (sinkFaceDir === 'right') { faucetX = w / 2 - lipW / 2; faucetOnX = true; }
+                    else if (sinkFaceDir === 'left') { faucetX = -w / 2 + lipW / 2; faucetOnX = true; }
+                    else { faucetZ = -d / 2 + lipD / 2; } // 'front' (ברירת מחדל) - כמו שהיה תמיד: צמוד לרצועה האחורית
+
                     const riserHeight = 26;
                     const riserGeo = new THREE.CylinderGeometry(1.4, 1.4, riserHeight, 12);
                     const riser = new THREE.Mesh(riserGeo, matMetal);
-                    riser.position.set(0, h / 2 + riserHeight / 2, faucetZ);
+                    riser.position.set(faucetX, h / 2 + riserHeight / 2, faucetZ);
                     riser.castShadow = true;
                     itemGroup.add(riser);
 
                     const jointGeo = new THREE.SphereGeometry(1.6, 12, 12);
                     const joint = new THREE.Mesh(jointGeo, matMetal);
-                    joint.position.set(0, h / 2 + riserHeight, faucetZ);
+                    joint.position.set(faucetX, h / 2 + riserHeight, faucetZ);
                     itemGroup.add(joint);
 
                     const spoutLength = 14;
                     const spoutGeo = new THREE.CylinderGeometry(1.3, 1.3, spoutLength, 12);
                     const spout = new THREE.Mesh(spoutGeo, matMetal);
-                    spout.rotation.x = Math.PI / 2;
-                    spout.position.set(0, h / 2 + riserHeight, faucetZ + spoutLength / 2);
+                    let spoutX = faucetX, spoutZ = faucetZ;
+                    if (faucetOnX) {
+                        spout.rotation.z = Math.PI / 2;
+                        spoutX = faucetX - Math.sign(faucetX) * spoutLength / 2; // פונה פנימה לעבר מרכז הכיור
+                    } else {
+                        spout.rotation.x = Math.PI / 2;
+                        spoutZ = faucetZ - Math.sign(faucetZ) * spoutLength / 2; // פונה פנימה לעבר מרכז הכיור
+                    }
+                    spout.position.set(spoutX, h / 2 + riserHeight, spoutZ);
                     spout.castShadow = true;
                     itemGroup.add(spout);
 
                     const tipGeo = new THREE.CylinderGeometry(1.1, 1.1, 4, 10);
                     const tip = new THREE.Mesh(tipGeo, matMetal);
-                    tip.position.set(0, h / 2 + riserHeight - 2, faucetZ + spoutLength);
+                    const tipX = faucetOnX ? (faucetX - Math.sign(faucetX) * spoutLength) : faucetX;
+                    const tipZ = faucetOnX ? faucetZ : (faucetZ - Math.sign(faucetZ) * spoutLength);
+                    tip.position.set(tipX, h / 2 + riserHeight - 2, tipZ);
                     itemGroup.add(tip);
 
                     const leverGeo = new THREE.CylinderGeometry(0.8, 0.8, 8, 8);
                     const lever = new THREE.Mesh(leverGeo, matMetal);
                     lever.rotation.z = Math.PI / 2;
-                    lever.position.set(5, h / 2 + riserHeight - 6, faucetZ);
+                    const leverX = faucetOnX ? faucetX : faucetX + 5;
+                    const leverZ = faucetOnX ? faucetZ + 5 : faucetZ;
+                    lever.position.set(leverX, h / 2 + riserHeight - 6, leverZ);
                     itemGroup.add(lever);
                 } else if (type === 'fridge') {
                     // מקרר 4 דלתות - שתי דלתות עליונות (מקרר) ושתי דלתות תחתונות (מקפיא)
