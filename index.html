@@ -369,6 +369,14 @@
                         <div class="w-5 h-5 bg-amber-300 border border-amber-600 rounded-full pointer-events-none"></div>
                         <span class="text-[10px] text-center leading-tight pointer-events-none">כיסא בר<br>40x40</span>
                     </button>
+
+                    <button class="draggable-item bg-orange-50 border border-orange-300 p-2 rounded flex flex-col items-center gap-1 hover:bg-orange-100 touch-none shadow-sm" data-type="shutter-cabinet" data-w="60" data-h="35" data-bg="#e7c9a3" data-name="ארון תריס">
+                        <div class="w-6 h-5 bg-orange-200 border border-orange-500 rounded-sm flex flex-col justify-end p-0.5 gap-px pointer-events-none">
+                            <div class="w-full h-px bg-orange-500"></div>
+                            <div class="w-full h-px bg-orange-500"></div>
+                        </div>
+                        <span class="text-[10px] text-center leading-tight pointer-events-none">ארון תריס<br>60x35</span>
+                    </button>
                 </div>
             </div>
 
@@ -400,6 +408,7 @@
                         <option value="shelves">מדפים</option>
                         <option value="bar-stool">כיסא בר</option>
                         <option value="window">חלון</option>
+                        <option value="shutter-cabinet">ארון תריס</option>
                     </select>
                 </div>
             </div>
@@ -433,18 +442,18 @@
 
             <!-- התחלת קוד חדש: בחירת צד ידית וכיוון חזית לארון -->
             <div id="prop-front-wrap" class="bg-amber-50 border border-amber-300 rounded p-1.5">
-                <label class="text-[11px] text-amber-800 font-bold mb-0.5 block text-center">לאיזה כיוון פונה החזית (דלתות/ידיות/ברז)</label>
-                <select id="prop-front" class="w-full border border-slate-300 rounded p-1 text-center text-sm font-bold text-slate-700 bg-white">
-                    <option value="front">קדימה (רגיל)</option>
-                    <option value="back">אחורה (הפוך)</option>
-                    <option value="right">ימינה (הצידה)</option>
-                    <option value="left">שמאלה (הצידה)</option>
+                <label class="text-[11px] text-amber-800 font-bold mb-0.5 block text-center">כיוון חזית (דלתות/ידיות/ברז)</label>
+                <select id="prop-front" class="w-full border border-slate-300 rounded p-1 text-center text-sm font-bold text-slate-700 bg-white" onchange="updateFrontDirection()">
+                    <option value="front">אוטומטי (לפי הקיר שצמוד)</option>
+                    <option value="back">הפוך (ידני - לאיים/עמדות ישיבה)</option>
+                    <option value="right">ימינה (ידני)</option>
+                    <option value="left">שמאלה (ידני)</option>
                 </select>
             </div>
 
             <div id="prop-handle-wrap">
                 <label class="text-[11px] text-slate-500 mb-0.5 block text-center">צד ידית (ל-3D)</label>
-                <select id="prop-handle" class="w-full border border-slate-300 rounded p-1 text-center text-sm font-bold text-slate-700 bg-white">
+                <select id="prop-handle" class="w-full border border-slate-300 rounded p-1 text-center text-sm font-bold text-slate-700 bg-white" onchange="updateHandleSide()">
                     <option value="left">שמאל</option>
                     <option value="right">ימין</option>
                     <option value="none">ללא ידית</option>
@@ -521,7 +530,7 @@
         // סוגי פריטים שיש להם דלת/ידית ב-3D (לא רלוונטי לכיור, כיריים, מקרר וכו')
         const HANDLE_TYPES = ['base', 'drawers', 'tall', 'ceiling-cabinet', 'upper-cabinet', 'upper-to-ceiling', 'oven-built-in'];
         // סוגי פריטים שאפשר להפוך את כיוון החזית שלהם (דלתות/מגירות פונות לצד השני - שימושי באי מטבח)
-        const FRONT_TYPES = ['base', 'drawers', 'tall', 'ceiling-cabinet', 'upper-cabinet', 'upper-to-ceiling', 'oven-built-in', 'oven', 'sink'];
+        const FRONT_TYPES = ['base', 'drawers', 'tall', 'ceiling-cabinet', 'upper-cabinet', 'upper-to-ceiling', 'oven-built-in', 'oven', 'sink', 'fridge', 'shutter-cabinet'];
 
         let selectedElement = null;
         let isDrawingMode = false;
@@ -531,7 +540,8 @@
                 case 'upper-cabinet':
                 case 'upper-to-ceiling': return 150;
                 case 'sink':
-                case 'hob': return 90;
+                case 'hob':
+                case 'shutter-cabinet': return 90;
                 case 'window': return 105;
                 case 'shelves': return 160;
                 case 'oven-built-in': return 45;
@@ -1108,6 +1118,19 @@
             saveState(); // שמירת מידות חדשות
         }
 
+        // שינויים שחלים מיד בבחירה (ללא צורך ללחוץ "החל")
+        function updateFrontDirection() {
+            if (!selectedElement) return;
+            selectedElement.dataset.front = inputFront.value;
+            saveState();
+        }
+
+        function updateHandleSide() {
+            if (!selectedElement) return;
+            selectedElement.dataset.handle = inputHandle.value;
+            saveState();
+        }
+
         let clipboardData = null;
 
         function copySelected() {
@@ -1367,6 +1390,41 @@
             return tex;
         }
 
+        function createOvenGlassTexture() {
+            // זכוכית שחורה מבריקה עם פסי הברקה אלכסוניים (לדלתות תנור)
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const context = canvas.getContext('2d');
+            context.fillStyle = '#0a0a0c';
+            context.fillRect(0, 0, 512, 512);
+
+            context.save();
+            context.translate(256, 256);
+            context.rotate(-Math.PI / 5);
+            context.translate(-256, -256);
+            const stripes = [
+                { x: 60, w: 40, alpha: 0.14 },
+                { x: 140, w: 18, alpha: 0.22 },
+                { x: 340, w: 55, alpha: 0.10 },
+                { x: 420, w: 22, alpha: 0.18 },
+            ];
+            stripes.forEach(s => {
+                const grad = context.createLinearGradient(s.x, 0, s.x + s.w, 0);
+                grad.addColorStop(0, 'rgba(255,255,255,0)');
+                grad.addColorStop(0.5, `rgba(255,255,255,${s.alpha})`);
+                grad.addColorStop(1, 'rgba(255,255,255,0)');
+                context.fillStyle = grad;
+                context.fillRect(s.x - 100, -200, s.w + 200, 900);
+            });
+            context.restore();
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.ClampToEdgeWrapping;
+            tex.wrapT = THREE.ClampToEdgeWrapping;
+            return tex;
+        }
+
         function createConcreteTexture() {
             const canvas = document.createElement('canvas');
             canvas.width = 512;
@@ -1484,6 +1542,8 @@
             const texRustic = createRusticWhiteTexture();
             const texBlackMarble = createBlackMarbleTexture();
             const texConcrete = createConcreteTexture();
+            const texOvenGlass = createOvenGlassTexture();
+            const matOvenGlass = new THREE.MeshStandardMaterial({ map: texOvenGlass, roughness: 0.12, metalness: 0.3 });
 
             // קריאת הגדרות העיצוב מהתפריט (הבחירה שלך)
             const cabStyle = document.getElementById('global-cabinet-style')?.value || 'wood';
@@ -1547,6 +1607,50 @@
                 }
             });
 
+            // מיקומי כל הקירות מראש, כדי שנוכל לזהות אוטומטית לאיזה קיר כל ארון צמוד
+            const wallFootprints = [];
+            items.forEach(el => {
+                if (el.dataset.type === 'wall' && !el.classList.contains('drawing')) {
+                    const wPx = parseInt(el.style.width) || 0;
+                    const hPx = parseInt(el.style.height) || 0;
+                    const lPx = parseInt(el.style.left) || 0;
+                    const tPx = parseInt(el.style.top) || 0;
+                    wallFootprints.push({
+                        x0: lPx / PX_PER_CM, x1: (lPx + wPx) / PX_PER_CM,
+                        z0: tPx / PX_PER_CM, z1: (tPx + hPx) / PX_PER_CM,
+                    });
+                }
+            });
+
+            // זיהוי אוטומטי לאיזה כיוון עולם צריכה לפנות החזית, לפי הקיר שהפריט צמוד אליו בפועל.
+            // 'front'=Z+, 'back'=Z-, 'right'=X+, 'left'=X- (מבטא לאיזה צד הקיר נמצא ביחס לפריט).
+            // רק בחירה מפורשת של 'back'/'right'/'left' עוקפת את הזיהוי האוטומטי - 'front' (ברירת המחדל) תמיד מזוהה מחדש.
+            function resolveFaceDir(rawFront, ix, iz, iw, id) {
+                if (rawFront === 'back' || rawFront === 'right' || rawFront === 'left') return rawFront;
+                const TOL = 15; // ס"מ - סבילות בזיהוי הצמדה לקיר
+                const ix0 = ix, ix1 = ix + iw, iz0 = iz, iz1 = iz + id;
+                let best = 'front', bestOverlap = 0;
+                wallFootprints.forEach(wf => {
+                    if (Math.abs(wf.z1 - iz0) <= TOL) {
+                        const overlap = Math.min(wf.x1, ix1) - Math.max(wf.x0, ix0);
+                        if (overlap > bestOverlap) { bestOverlap = overlap; best = 'front'; }
+                    }
+                    if (Math.abs(wf.z0 - iz1) <= TOL) {
+                        const overlap = Math.min(wf.x1, ix1) - Math.max(wf.x0, ix0);
+                        if (overlap > bestOverlap) { bestOverlap = overlap; best = 'back'; }
+                    }
+                    if (Math.abs(wf.x1 - ix0) <= TOL) {
+                        const overlap = Math.min(wf.z1, iz1) - Math.max(wf.z0, iz0);
+                        if (overlap > bestOverlap) { bestOverlap = overlap; best = 'right'; }
+                    }
+                    if (Math.abs(wf.x0 - ix1) <= TOL) {
+                        const overlap = Math.min(wf.z1, iz1) - Math.max(wf.z0, iz0);
+                        if (overlap > bestOverlap) { bestOverlap = overlap; best = 'left'; }
+                    }
+                });
+                return best;
+            }
+
             let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
             let hasItems = false;
 
@@ -1576,22 +1680,23 @@
 
                 switch(type) {
                     case 'wall': h = 280; activeMaterial = matWall; break;
-                    case 'window': h = WINDOW_HEIGHT_3D; yOffset = 105; activeMaterial = matWall; break;
+                    case 'window': h = WINDOW_HEIGHT_3D; activeMaterial = matWall; break;
                     case 'countertop': h = 4; activeMaterial = matMainCountertop; if (yOffset === 0) yOffset = 86; break;
                     case 'tall': h = 230; activeMaterial = matMainCabinet; break;
                     case 'ceiling-cabinet': h = 280; activeMaterial = matMainCabinet; break;
-                    case 'upper-cabinet': h = 80; yOffset = 150; activeMaterial = matMainCabinet; break;
-                    case 'upper-to-ceiling': h = 130; yOffset = 150; activeMaterial = matMainCabinet; break;
+                    case 'upper-cabinet': h = 80; activeMaterial = matMainCabinet; break;
+                    case 'upper-to-ceiling': h = 130; activeMaterial = matMainCabinet; break;
                     case 'base': h = 86; activeMaterial = matMainCabinet; break;
                     case 'fridge': h = 190; activeMaterial = matFridgeSteel; break;
-                    case 'sink': h = 15; yOffset = 75.4; activeMaterial = matMetal; break;
-                    case 'hob': h = 3; yOffset = 90; activeMaterial = matBlack; break;
+                    case 'sink': h = 15; activeMaterial = matMetal; if (yOffset === 90) yOffset = 75.4; break;
+                    case 'hob': h = 3; activeMaterial = matBlack; break;
                     case 'dishwasher': h = 86; activeMaterial = matMetal; break;
-                    case 'shelves': h = 4; yOffset = 160; activeMaterial = matMainCabinet; break;
+                    case 'shelves': h = 4; activeMaterial = matMainCabinet; break;
                     case 'drawers': h = 86; activeMaterial = matMainCabinet; break;
                     case 'oven-built-in': h = 60; activeMaterial = matMetal; break;
                     case 'oven': h = 86; activeMaterial = matMetal; break;
                     case 'bar-stool': h = 75; activeMaterial = matStoolSeat; break;
+                    case 'shutter-cabinet': h = 130; activeMaterial = matMainCabinet; break;
                 }
 
                 const centerX = x + (w / 2);
@@ -1688,7 +1793,7 @@
                     });
 
                     // ברז - לאיזה קיר הכיור צמוד קובע לאיזה צד הברז מוצמד (front=ברירת מחדל/קיר אחורי, back=קיר קדמי, right/left=קיר צד)
-                    const sinkFaceDir = el.dataset.front || 'front';
+                    const sinkFaceDir = resolveFaceDir(el.dataset.front, x, z, w, d);
                     let faucetX = 0, faucetZ = 0, faucetOnX = false;
                     if (sinkFaceDir === 'back') { faucetZ = d / 2 - lipD / 2; }
                     else if (sinkFaceDir === 'right') { faucetX = w / 2 - lipW / 2; faucetOnX = true; }
@@ -1737,7 +1842,7 @@
                     lever.position.set(leverX, h / 2 + riserHeight - 6, leverZ);
                     itemGroup.add(lever);
                 } else if (type === 'fridge') {
-                    // מקרר 4 דלתות - שתי דלתות עליונות (מקרר) ושתי דלתות תחתונות (מקפיא)
+                    // מקרר 4 דלתות - שתי דלתות עליונות (מקרר) ושתי דלתות תחתונות (מקפיא), עם תמיכה בכיוון חזית
                     const geo = new THREE.BoxGeometry(w, h, d);
                     const mesh = new THREE.Mesh(geo, activeMaterial);
                     mesh.castShadow = true;
@@ -1748,6 +1853,22 @@
                     const lineMat = new THREE.LineBasicMaterial({ color: 0x000000, opacity: 0.3, transparent: true });
                     mesh.add(new THREE.LineSegments(edges, lineMat));
 
+                    // כיוון חזית המקרר: front=Z+, back=Z-, right=X+, left=X- (חשוב למקרר שצמוד לקיר צד)
+                    const fridgeFaceDir = resolveFaceDir(el.dataset.front, x, z, w, d);
+                    let fAxis, fSign, fW;
+                    if (fridgeFaceDir === 'back') { fAxis = 'z'; fSign = -1; fW = w; }
+                    else if (fridgeFaceDir === 'right') { fAxis = 'x'; fSign = 1; fW = d; }
+                    else if (fridgeFaceDir === 'left') { fAxis = 'x'; fSign = -1; fW = d; }
+                    else { fAxis = 'z'; fSign = 1; fW = w; }
+                    const fThick = (fAxis === 'z') ? d : w;
+                    const fPos = (u, vY, offset) => {
+                        const n = fSign * (fThick / 2 + offset);
+                        return (fAxis === 'z') ? [u, vY, n] : [n, vY, u];
+                    };
+                    const fBox = (uSize, ySize, thickSize) => (fAxis === 'z')
+                        ? new THREE.BoxGeometry(uSize, ySize, thickSize)
+                        : new THREE.BoxGeometry(thickSize, ySize, uSize);
+
                     const sepMat = new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0.3, transparent: true });
                     const topH = h * 0.72;
                     const botH = h - topH;
@@ -1756,35 +1877,42 @@
                     const botCenterY = -h / 2 + botH / 2;
 
                     // חלוקה אופקית בין תא הקירור לתא ההקפאה
-                    const hSep = new THREE.Mesh(new THREE.BoxGeometry(w - 1, 0.3, 0.3), sepMat);
-                    hSep.position.set(0, dividerY, d / 2 + 0.1);
+                    const hSep = new THREE.Mesh(fBox(fW - 1, 0.3, 0.3), sepMat);
+                    const [hsx, hsy, hsz] = fPos(0, dividerY, 0.1);
+                    hSep.position.set(hsx, hsy, hsz);
                     itemGroup.add(hSep);
 
                     // חלוקה אנכית בתא העליון (2 דלתות)
-                    const vSepTop = new THREE.Mesh(new THREE.BoxGeometry(0.3, topH - 1, 0.3), sepMat);
-                    vSepTop.position.set(0, topCenterY, d / 2 + 0.1);
+                    const vSepTop = new THREE.Mesh(fBox(0.3, topH - 1, 0.3), sepMat);
+                    const [vtx, vty, vtz] = fPos(0, topCenterY, 0.1);
+                    vSepTop.position.set(vtx, vty, vtz);
                     itemGroup.add(vSepTop);
 
                     // חלוקה אנכית בתא התחתון (2 דלתות)
-                    const vSepBot = new THREE.Mesh(new THREE.BoxGeometry(0.3, botH - 1, 0.3), sepMat);
-                    vSepBot.position.set(0, botCenterY, d / 2 + 0.1);
+                    const vSepBot = new THREE.Mesh(fBox(0.3, botH - 1, 0.3), sepMat);
+                    const [vbx, vby, vbz] = fPos(0, botCenterY, 0.1);
+                    vSepBot.position.set(vbx, vby, vbz);
                     itemGroup.add(vSepBot);
 
                     // ידיות לשתי הדלתות העליונות
-                    const topHandleGeo = new THREE.BoxGeometry(1.5, topH * 0.45, 2);
+                    const topHandleGeo = fBox(1.5, topH * 0.45, 2);
                     const topHandle1 = new THREE.Mesh(topHandleGeo, matMetal);
                     const topHandle2 = new THREE.Mesh(topHandleGeo, matMetal);
-                    topHandle1.position.set(-6, topCenterY, d / 2 + 1);
-                    topHandle2.position.set(6, topCenterY, d / 2 + 1);
+                    const [th1x, th1y, th1z] = fPos(-6, topCenterY, 1);
+                    const [th2x, th2y, th2z] = fPos(6, topCenterY, 1);
+                    topHandle1.position.set(th1x, th1y, th1z);
+                    topHandle2.position.set(th2x, th2y, th2z);
                     itemGroup.add(topHandle1);
                     itemGroup.add(topHandle2);
 
                     // ידיות לשתי הדלתות התחתונות
-                    const botHandleGeo = new THREE.BoxGeometry(1.2, Math.max(6, botH * 0.5), 2);
+                    const botHandleGeo = fBox(1.2, Math.max(6, botH * 0.5), 2);
                     const botHandle1 = new THREE.Mesh(botHandleGeo, matMetal);
                     const botHandle2 = new THREE.Mesh(botHandleGeo, matMetal);
-                    botHandle1.position.set(-6, botCenterY, d / 2 + 1);
-                    botHandle2.position.set(6, botCenterY, d / 2 + 1);
+                    const [bh1x, bh1y, bh1z] = fPos(-6, botCenterY, 1);
+                    const [bh2x, bh2y, bh2z] = fPos(6, botCenterY, 1);
+                    botHandle1.position.set(bh1x, bh1y, bh1z);
+                    botHandle2.position.set(bh2x, bh2y, bh2z);
                     itemGroup.add(botHandle1);
                     itemGroup.add(botHandle2);
                 } else if (type === 'window') {
@@ -1829,6 +1957,62 @@
                         glass.position.set(sashX, 0, 0);
                         itemGroup.add(glass);
                     });
+                } else if (type === 'shutter-cabinet') {
+                    // ארון תריס שיושב על השיש - תריס גלילה עם פסים אופקיים, מוזז חלקית כלפי מעלה כך שנראה פתוח
+                    const sFaceDir = resolveFaceDir(el.dataset.front, x, z, w, d);
+                    let sAxis, sSign, sFaceW;
+                    if (sFaceDir === 'back') { sAxis = 'z'; sSign = -1; sFaceW = w; }
+                    else if (sFaceDir === 'right') { sAxis = 'x'; sSign = 1; sFaceW = d; }
+                    else if (sFaceDir === 'left') { sAxis = 'x'; sSign = -1; sFaceW = d; }
+                    else { sAxis = 'z'; sSign = 1; sFaceW = w; }
+                    const sThick = (sAxis === 'z') ? d : w;
+                    const sPos = (u, vY, offset) => {
+                        const n = sSign * (sThick / 2 + offset);
+                        return (sAxis === 'z') ? [u, vY, n] : [n, vY, u];
+                    };
+                    const sBox = (uSize, ySize, thickSize) => (sAxis === 'z')
+                        ? new THREE.BoxGeometry(uSize, ySize, thickSize)
+                        : new THREE.BoxGeometry(thickSize, ySize, uSize);
+
+                    // גוף הארון
+                    const bodyGeo = new THREE.BoxGeometry(w, h, d);
+                    const body = new THREE.Mesh(bodyGeo, activeMaterial);
+                    body.castShadow = true;
+                    body.receiveShadow = true;
+                    itemGroup.add(body);
+                    const bodyEdges = new THREE.EdgesGeometry(bodyGeo);
+                    body.add(new THREE.LineSegments(bodyEdges, new THREE.LineBasicMaterial({ color: 0x000000, opacity: 0.3, transparent: true })));
+
+                    // התריס תופס רק את השליש העליון של החזית; שני השליש התחתונים פתוחים (שם עומד המכשיר)
+                    const shutterFrac = 1 / 3;
+                    const shutterH = h * shutterFrac;
+                    const openH = h - shutterH;
+
+                    // פתח כהה בחלק התחתון של החזית
+                    const interiorMat = new THREE.MeshStandardMaterial({ color: 0x2b2320, roughness: 0.9 });
+                    const interior = new THREE.Mesh(sBox(sFaceW - 4, openH - 2, 1), interiorMat);
+                    const [ix, iy, iz] = sPos(0, -h / 2 + openH / 2 + 1, 0.35);
+                    interior.position.set(ix, iy, iz);
+                    itemGroup.add(interior);
+
+                    // התריס עצמו - פסים אופקיים מתכתיים בשליש העליון של החזית
+                    const numSlats = Math.max(4, Math.round(shutterH / 4));
+                    const slatH = shutterH / numSlats;
+                    const shutterMat = new THREE.MeshStandardMaterial({ color: 0xd9dcdf, roughness: 0.35, metalness: 0.5 });
+                    for (let i = 0; i < numSlats; i++) {
+                        const slatY = h / 2 - slatH * (i + 0.5);
+                        const slat = new THREE.Mesh(sBox(sFaceW - 2, slatH - 0.4, 0.6), shutterMat);
+                        const [slx, sly, slz] = sPos(0, slatY, 0.3);
+                        slat.position.set(slx, sly, slz);
+                        itemGroup.add(slat);
+                    }
+
+                    // ידית קטנה בשפה התחתונה של התריס (לתפוס ולהוריד)
+                    const handleGeo = sBox(sFaceW * 0.5, 1.5, 2);
+                    const handle = new THREE.Mesh(handleGeo, matMetal);
+                    const [hgx, hgy, hgz] = sPos(0, h / 2 - shutterH + slatH / 2, 1.2);
+                    handle.position.set(hgx, hgy, hgz);
+                    itemGroup.add(handle);
                 } else if (type === 'wall') {
                     // קיר - אם חלון חופף לקטע הזה, פותחים בו חור אמיתי (במקום קופסה אטומה)
                     const longAxisX = w >= d;
@@ -1879,7 +2063,7 @@
 
                 // לאיזה כיוון עולם פונה החזית (דלתות/מגירות/ידית): front=Z+, back=Z-, right=X+, left=X-
                 // חשוב לארונות שצמודים לקיר צד (לא רק לקיר אחורי) - שם החזית צריכה לפנות ל-X ולא ל-Z
-                const faceDirRaw = el.dataset.front || 'front';
+                const faceDirRaw = resolveFaceDir(el.dataset.front, x, z, w, d);
                 let faceAxis, faceSign, faceW;
                 if (faceDirRaw === 'back') { faceAxis = 'z'; faceSign = -1; faceW = w; }
                 else if (faceDirRaw === 'right') { faceAxis = 'x'; faceSign = 1; faceW = d; }
@@ -1923,15 +2107,15 @@
                             itemGroup.add(handle);
                         }
                     } else if (type === 'oven-built-in') {
-                        // תנור בילד-אין - חזית עם "דלת זכוכית" כהה וידית אופקית במרכז החזית
-                        const doorMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.3, metalness: 0.4 });
-                        const door = new THREE.Mesh(faceBox(faceW - 8, h - 8, 0.5), doorMat);
-                        const [dx, dy, dz] = facePos(0, 0, 0.3);
+                        // תנור בילד-אין - חזית זכוכית שחורה מבריקה עם פסי הברקה אלכסוניים + ידית מוכספת במרכז החזית
+                        // (מרווחים מוגדלים בין הגוף/הדלת/הידית כדי שלא יהיה ריצוד/חפיפה בין המשטחים)
+                        const door = new THREE.Mesh(faceBox(faceW - 8, h - 8, 0.6), matOvenGlass);
+                        const [dx, dy, dz] = facePos(0, 0, 0.5);
                         door.position.set(dx, dy, dz);
                         itemGroup.add(door);
 
                         const handle = new THREE.Mesh(faceBox(faceW * 0.6, 2, 2), matMetal);
-                        const [hx, hy, hz] = facePos(0, 0, 1.5);
+                        const [hx, hy, hz] = facePos(0, 0, 1.9);
                         handle.position.set(hx, hy, hz);
                         itemGroup.add(handle);
                     } else if (type !== 'shelves') {
@@ -1968,15 +2152,15 @@
                         }
                     }
                 } else if (type === 'oven') {
-                    // תנור עומד חופשי - חזית כהה עם ידית מלאה לרוחב, במרכז החזית בלבד
-                    const doorMat = new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.3, metalness: 0.5 });
-                    const door = new THREE.Mesh(faceBox(faceW - 6, h - 6, 0.5), doorMat);
-                    const [dx, dy, dz] = facePos(0, 0, 0.3);
+                    // תנור עומד חופשי - חזית זכוכית שחורה מבריקה עם פסי הברקה אלכסוניים + ידית מוכספת מלאה לרוחב
+                    // (מרווחים מוגדלים בין הגוף/הדלת/הידית כדי שלא יהיה ריצוד/חפיפה בין המשטחים)
+                    const door = new THREE.Mesh(faceBox(faceW - 6, h - 6, 0.6), matOvenGlass);
+                    const [dx, dy, dz] = facePos(0, 0, 0.5);
                     door.position.set(dx, dy, dz);
                     itemGroup.add(door);
 
                     const handle = new THREE.Mesh(faceBox(faceW * 0.8, 2.5, 2.5), matMetal);
-                    const [hx, hy, hz] = facePos(0, 0, 1.5);
+                    const [hx, hy, hz] = facePos(0, 0, 2.2);
                     handle.position.set(hx, hy, hz);
                     itemGroup.add(handle);
                 }
