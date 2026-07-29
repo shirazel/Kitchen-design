@@ -7,12 +7,19 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             overscroll-behavior: none;
             height: 100dvh;
             overflow: hidden;
             user-select: none;
+            font-family: 'Rubik', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+            letter-spacing: 0.01em;
             -webkit-user-select: none;
         }
 
@@ -40,10 +47,6 @@
 
         #canvas-container:active {
             cursor: grabbing;
-        }
-
-        #canvas-container.draw-mode {
-            cursor: crosshair;
         }
 
         .kitchen-item {
@@ -83,15 +86,13 @@
             z-index: 30;
         }
 
-        /* הוספת מיקום תחתון לשרטוט חופשי */
-        .kitchen-item.drawing .dim-label,
+        /* מיקום תחתון לפריטי שיש/אי ישנים שנוצרו בעבר בשרטוט חופשי (נשמר לצורך תאימות לאחור) */
         .kitchen-item.drawn-shape .dim-label {
             top: auto;
             bottom: -35px;
         }
 
-        .kitchen-item.selected .dim-label,
-        .kitchen-item.drawing .dim-label {
+        .kitchen-item.selected .dim-label {
             display: block;
         }
 
@@ -152,20 +153,28 @@
             z-index: 10000;
             display: none;
         }
-        #close-3d-btn {
+        #close-3d-btn, #screenshot-3d-btn, #prompt-3d-btn {
             position: absolute;
             top: 20px;
-            right: 20px;
-            background: #ef4444;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            font-weight: bold;
-            border-radius: 8px;
+            color: #e2e8f0;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(6px);
+            padding: 9px 18px;
+            font-weight: 500;
+            font-size: 14px;
+            border-radius: 10px;
             cursor: pointer;
             z-index: 10001;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: background 0.15s ease, border-color 0.15s ease;
         }
+        #close-3d-btn:hover, #screenshot-3d-btn:hover, #prompt-3d-btn:hover {
+            background: rgba(51, 65, 85, 0.85);
+        }
+        #close-3d-btn { right: 20px; }
+        #screenshot-3d-btn { left: 20px; }
+        #prompt-3d-btn { left: 150px; border-color: rgba(45, 212, 191, 0.35); color: #5eead4; }
+        #prompt-3d-btn:hover { background: rgba(20, 184, 166, 0.15); }
         #instructions-3d {
             position: absolute;
             bottom: 20px;
@@ -182,23 +191,40 @@
             backdrop-filter: blur(4px);
             border: 1px solid rgba(255,255,255,0.1);
         }
+
+        .signature {
+            direction: rtl;
+            text-align: center;
+            font-size: 11px;
+            line-height: 1.7;
+            padding: 10px 8px;
+            color: #64748b;
+            opacity: 0.75;
+        }
+        .signature a {
+            color: inherit;
+            text-decoration: none;
+            border-bottom: 1px solid currentColor;
+            padding-bottom: 1px;
+        }
+        .signature a:hover { opacity: 1; }
     </style>
 </head>
-<body class="bg-slate-50 flex flex-row h-[100dvh] font-sans text-slate-800">
+<body class="bg-slate-50 flex flex-row h-[100dvh] text-slate-800">
 
     <aside class="w-56 md:w-64 h-full shrink-0 bg-white border-l border-slate-200 shadow-md flex flex-col z-20">
         <div class="p-4 bg-slate-800 text-white flex justify-between items-center shrink-0">
             <h1 class="text-lg font-bold">מתכנן מטבחים</h1>
-            <span class="text-xs bg-slate-700 px-2 py-1 rounded">1 משבצת = 10 ס"מ</span>
+            <div class="flex items-center gap-2">
+                <span class="text-xs bg-slate-700 px-2 py-1 rounded">1 משבצת = 10 ס"מ</span>
+                <button class="flex items-center gap-1 bg-sky-500 hover:bg-sky-400 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-sm transition-colors" onclick="openHelpModal()" title="הוראות הפעלה">
+                    <span>📖</span>
+                    <span>הוראות</span>
+                </button>
+            </div>
         </div>
 
         <div class="p-4 flex-1 overflow-y-auto space-y-4">
-            <div>
-                <button id="draw-btn" class="w-full bg-slate-100 hover:bg-slate-200 border border-slate-300 p-3 rounded flex items-center justify-center gap-2 transition-colors shadow-sm" onclick="toggleDrawMode()">
-                    <span class="text-xl">✏️</span>
-                    <span class="text-sm font-semibold">שרטוט חופשי (שיש/קיר/אי)</span>
-                </button>
-            </div>
 
             <div>
                 <button class="w-full bg-indigo-100 hover:bg-indigo-200 border border-indigo-300 p-3 rounded flex items-center justify-center gap-2 transition-colors shadow-sm mt-2" onclick="open3DView()">
@@ -220,13 +246,21 @@
             </div>
 
             <div class="flex gap-2 mt-2">
-                <button class="flex-1 bg-teal-100 hover:bg-teal-200 border border-teal-300 p-2 rounded flex items-center justify-center gap-1 transition-colors shadow-sm" onclick="openSaveModal()">
+                <button class="flex-1 bg-teal-100 hover:bg-teal-200 border border-teal-300 p-2 rounded flex items-center justify-center gap-1 transition-colors shadow-sm" onclick="saveAsFile()">
                     <span class="text-lg">💾</span>
-                    <span class="text-xs font-bold text-teal-800">שמור כקוד</span>
+                    <span class="text-xs font-bold text-teal-800">שמור כקובץ</span>
                 </button>
-                <button class="flex-1 bg-amber-100 hover:bg-amber-200 border border-amber-300 p-2 rounded flex items-center justify-center gap-1 transition-colors shadow-sm" onclick="openLoadModal()">
+                <button class="flex-1 bg-amber-100 hover:bg-amber-200 border border-amber-300 p-2 rounded flex items-center justify-center gap-1 transition-colors shadow-sm" onclick="document.getElementById('load-file-input').click()">
                     <span class="text-lg">📂</span>
-                    <span class="text-xs font-bold text-amber-800">טען מקוד</span>
+                    <span class="text-xs font-bold text-amber-800">טען קובץ</span>
+                </button>
+                <input type="file" id="load-file-input" accept=".txt" style="display:none" onchange="loadFromFile(event)">
+            </div>
+
+            <div class="mt-2">
+                <button class="w-full bg-indigo-100 hover:bg-indigo-200 border border-indigo-300 p-2 rounded flex items-center justify-center gap-2 transition-colors shadow-sm" onclick="downloadStandalone3D()">
+                    <span class="text-lg">💾🧊</span>
+                    <span class="text-xs font-bold text-indigo-800">הורד הדמיית 3D כקובץ נפרד</span>
                 </button>
             </div>
 
@@ -377,6 +411,16 @@
                         </div>
                         <span class="text-[10px] text-center leading-tight pointer-events-none">ארון תריס<br>60x35</span>
                     </button>
+
+                    <button class="draggable-item bg-lime-50 border border-lime-300 p-2 rounded flex flex-col items-center gap-1 hover:bg-lime-100 touch-none shadow-sm" data-type="dining-table" data-w="120" data-h="80" data-bg="#d4a373" data-name="שולחן אוכל">
+                        <div class="w-6 h-4 bg-lime-200 border border-lime-600 rounded-sm pointer-events-none"></div>
+                        <span class="text-[10px] text-center leading-tight pointer-events-none">שולחן אוכל<br>120x80</span>
+                    </button>
+
+                    <button class="draggable-item bg-lime-50 border border-lime-300 p-2 rounded flex flex-col items-center gap-1 hover:bg-lime-100 touch-none shadow-sm" data-type="chair" data-w="45" data-h="45" data-bg="#d4a373" data-name="כיסא">
+                        <div class="w-4 h-5 bg-lime-200 border border-lime-600 rounded-sm pointer-events-none"></div>
+                        <span class="text-[10px] text-center leading-tight pointer-events-none">כיסא<br>45x45</span>
+                    </button>
                 </div>
             </div>
 
@@ -409,6 +453,8 @@
                         <option value="bar-stool">כיסא בר</option>
                         <option value="window">חלון</option>
                         <option value="shutter-cabinet">ארון תריס</option>
+                        <option value="dining-table">שולחן אוכל</option>
+                        <option value="chair">כיסא</option>
                     </select>
                 </div>
             </div>
@@ -474,10 +520,16 @@
             </div>
         </div>
 
-        <div id="empty-selection-panel" class="p-4 border-t border-slate-200 bg-slate-50 shrink-0 text-center flex flex-col justify-center items-center min-h-[220px]">
-            <span class="text-2xl mb-2 opacity-50">👆</span>
-            <p class="text-sm text-slate-500 font-medium">בחר פריט או שרטוט<br>כדי לערוך מידות, שם או למחוק</p>
+        <div id="empty-selection-panel" class="px-4 py-2.5 border-t border-slate-200 bg-slate-50 shrink-0 flex items-center justify-center gap-2">
+            <span class="text-base opacity-50">👆</span>
+            <p class="text-xs text-slate-500 font-medium">בחרי פריט כדי לערוך מידות, שם או למחוק</p>
         </div>
+
+        <footer class="signature shrink-0 border-t border-slate-200 bg-slate-50">
+            © שירה רוט זליקוביץ · הוראה יצירתית עם AI ·
+            <a href="https://wa.me/972523930628" target="_blank" rel="noopener">ווטסאפ</a> ·
+            <a href="https://www.lomdot.org/" target="_blank" rel="noopener">להזמנת סדנאות AI</a>
+        </footer>
     </aside>
 
     <main id="scroll-container" class="flex-1 relative overflow-auto bg-slate-300">
@@ -489,7 +541,9 @@
     <div id="toast">הפריט נוסף בהצלחה למרכז הלוח!</div>
 
     <div id="scene-3d-container">
-        <button id="close-3d-btn" onclick="close3DView()">חזור לשרטוט ❌</button>
+        <button id="close-3d-btn" onclick="close3DView()">חזור לשרטוט</button>
+        <button id="screenshot-3d-btn" onclick="takeScreenshot3D()">צילום מסך</button>
+        <button id="prompt-3d-btn" onclick="openPromptModal()">צור פרומפט</button>
         <div id="instructions-3d">גררי עם העכבר/אצבע כדי להסתובב | גלגלי כדי להתקרב 🔍</div>
         <div id="canvas-3d"></div>
     </div>
@@ -508,10 +562,56 @@
     </div>
     <!-- סוף קוד חדש -->
 
+    <!-- התחלת קוד חדש: מודל הוראות הפעלה -->
+    <div id="help-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[20000] hidden items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-xl shadow-xl w-11/12 max-w-lg max-h-[85vh] flex flex-col gap-3">
+            <h2 class="text-xl font-bold text-slate-800 text-center shrink-0">הוראות הפעלה 📖</h2>
+            <div class="overflow-y-auto text-sm text-slate-700 space-y-3 pr-1">
+                <div>
+                    <h3 class="font-bold text-slate-800 mb-1">🪑 הוספת פריטים</h3>
+                    <p>גררי פריט מרשימת האביזרים בצד אל השרטוט, או לחצי עליו כדי שיתווסף אוטומטית למרכז הלוח.</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 mb-1">✋ עריכת פריט</h3>
+                    <p>לחצי על פריט כדי לסמן אותו - גררי אותו כדי להזיז, גררי מהפינה כדי לשנות מידה. בפאנל שנפתח בתחתית ניתן לשנות שם, מידות, גובה מהרצפה, וצד ידית.</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 mb-1">🔄 סיבוב וכיוון פריטים בתלת-מימד</h3>
+                    <p>פריטים כמו ארונות וכיסאות מסתובבים אוטומטית בתלת-מימד לפי הקיר שהם צמודים אליו בשרטוט (כך שהדלת/הגב פונים לכיוון הנכון). אם פריט לא צמוד לקיר, או שרוצים לכוון אותו ידנית, יש לבחור כיוון בשדה "כיוון חזית" בפאנל המאפיינים - front/back/right/left.</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 mb-1">⌨️ קיצורי מקלדת</h3>
+                    <p>Delete/Backspace - מחיקת פריט מסומן | Ctrl+Z - בטל | Ctrl+Shift+Z / Ctrl+Y - בצע שוב | Ctrl+C - העתק | Ctrl+V - הדבק | Ctrl+D - שכפול מהיר</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 mb-1">🧊 תצוגת תלת-מימד</h3>
+                    <p>לחצי על "הדמיית תלת-מימד 3D" כדי לראות את המטבח בתלת-ממד. גררי כדי לסובב את המצלמה, גלגלי כדי להתקרב/להתרחק.</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 mb-1">📸 צילום מסך</h3>
+                    <p>בתוך תצוגת התלת-מימד, הכפתור "צילום מסך" שומר תמונה של הזווית הנוכחית כקובץ PNG במחשב - שימושי לשיתוף המראה הנוכחי של המטבח.</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 mb-1">✨ צור פרומפט</h3>
+                    <p>בתוך תצוגת התלת-מימד, הכפתור "צור פרומפט" בונה טקסט באנגלית שמתאר את המטבח שלך (סגנון הארונות, השיש, האביזרים) בהתאם למה שבחרת. מעתיקים את הטקסט ומדביקים אותו בכלי ליצירת תמונות AI (כמו ChatGPT/DALL-E) - יש לצרף גם את תמונת ההדמיה שהורדת בצילום המסך - כדי לקבל הדמיה ריאליסטית של המטבח.</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 mb-1">💾 שמירה וטעינה</h3>
+                    <p>"שמור כקובץ" מוריד למחשב קובץ עם כל התוכנית - שמרי אותו במקום בטוח. "טען קובץ" משחזר תוכנית ששמרת בעבר מהקובץ הזה.</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 mb-1">💾🧊 הורדת הדמיה עצמאית</h3>
+                    <p>מוריד קובץ HTML נפרד שמכיל את התלת-מימד המלא - אפשר לפתוח אותו בכל מחשב, גם ללא אינטרנט, ולהמשיך לסובב ולהתקרב בהדמיה.</p>
+                </div>
+            </div>
+            <button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow shrink-0" onclick="closeHelpModal()">הבנתי, סגור</button>
+        </div>
+    </div>
+    <!-- סוף קוד חדש -->
+
     <script>
         const canvas = document.getElementById('canvas-container');
         const scrollContainer = document.getElementById('scroll-container');
-        const drawBtn = document.getElementById('draw-btn');
         const propPanel = document.getElementById('properties-panel');
         const emptyPanel = document.getElementById('empty-selection-panel');
         const inputWidth = document.getElementById('prop-width');
@@ -530,10 +630,9 @@
         // סוגי פריטים שיש להם דלת/ידית ב-3D (לא רלוונטי לכיור, כיריים, מקרר וכו')
         const HANDLE_TYPES = ['base', 'drawers', 'tall', 'ceiling-cabinet', 'upper-cabinet', 'upper-to-ceiling', 'oven-built-in'];
         // סוגי פריטים שאפשר להפוך את כיוון החזית שלהם (דלתות/מגירות פונות לצד השני - שימושי באי מטבח)
-        const FRONT_TYPES = ['base', 'drawers', 'tall', 'ceiling-cabinet', 'upper-cabinet', 'upper-to-ceiling', 'oven-built-in', 'oven', 'sink', 'fridge', 'shutter-cabinet'];
+        const FRONT_TYPES = ['base', 'drawers', 'tall', 'ceiling-cabinet', 'upper-cabinet', 'upper-to-ceiling', 'oven-built-in', 'oven', 'sink', 'fridge', 'shutter-cabinet', 'chair'];
 
         let selectedElement = null;
-        let isDrawingMode = false;
 
         function getDefaultElevation(type) {
             switch(type) {
@@ -743,8 +842,6 @@
             let pStartX, pStartY, elStartLeft, elStartTop, elStartWidth, elStartHeight;
 
             el.addEventListener('pointerdown', (e) => {
-                if (isDrawingMode) return;
-
                 e.stopPropagation();
                 selectElement(el);
 
@@ -826,9 +923,6 @@
                 isResizing = false;
             });
         }
-
-        let currentDrawShape = null;
-        let drawStartX = 0, drawStartY = 0;
 
         // --- התחלת מערכת Undo / Redo ---
         let stateHistory = [];
@@ -925,104 +1019,11 @@
         }
         // --- סוף מערכת Undo / Redo ---
 
-        function toggleDrawMode() {
-            isDrawingMode = !isDrawingMode;
-            if (isDrawingMode) {
-                drawBtn.classList.add('bg-green-200', 'border-green-500');
-                drawBtn.classList.remove('bg-slate-100');
-                canvas.classList.add('draw-mode');
-                selectElement(null);
-            } else {
-                drawBtn.classList.remove('bg-green-200', 'border-green-500');
-                drawBtn.classList.add('bg-slate-100');
-                canvas.classList.remove('draw-mode');
-            }
-        }
-
         canvas.addEventListener('pointerdown', (e) => {
             if (e.target === canvas) {
                 selectElement(null);
-
-                if (isDrawingMode) {
-                    e.preventDefault();
-                    canvas.setPointerCapture(e.pointerId);
-
-                    const rect = canvas.getBoundingClientRect();
-                    drawStartX = e.clientX - rect.left;
-                    drawStartY = e.clientY - rect.top;
-
-                    currentDrawShape = document.createElement('div');
-                    currentDrawShape.className = 'kitchen-item drawing border-dashed';
-                    currentDrawShape.style.backgroundColor = 'rgba(148, 163, 184, 0.5)';
-                    currentDrawShape.style.left = Math.round(drawStartX / GRID_SIZE) * GRID_SIZE + 'px';
-                    currentDrawShape.style.top = Math.round(drawStartY / GRID_SIZE) * GRID_SIZE + 'px';
-                    currentDrawShape.style.width = '0px';
-                    currentDrawShape.style.height = '0px';
-
-                    const label = document.createElement('div');
-                    label.className = 'dim-label';
-                    currentDrawShape.appendChild(label);
-
-                    canvas.appendChild(currentDrawShape);
-
-                    canvas.addEventListener('pointermove', onDrawMove);
-                    canvas.addEventListener('pointerup', onDrawEnd);
-                }
             }
         });
-
-        function onDrawMove(e) {
-            if (!currentDrawShape) return;
-            const rect = canvas.getBoundingClientRect();
-            const currentX = e.clientX - rect.left;
-            const currentY = e.clientY - rect.top;
-
-            let w = Math.abs(currentX - drawStartX);
-            let h = Math.abs(currentY - drawStartY);
-            let l = Math.min(currentX, drawStartX);
-            let t = Math.min(currentY, drawStartY);
-
-            // הצמדה למשבצות תוך כדי שרטוט
-            w = Math.round(w / GRID_SIZE) * GRID_SIZE;
-            h = Math.round(h / GRID_SIZE) * GRID_SIZE;
-            l = Math.round(l / GRID_SIZE) * GRID_SIZE;
-            t = Math.round(t / GRID_SIZE) * GRID_SIZE;
-
-            currentDrawShape.style.left = l + 'px';
-            currentDrawShape.style.top = t + 'px';
-            currentDrawShape.style.width = w + 'px';
-            currentDrawShape.style.height = h + 'px';
-
-            updateLabel(currentDrawShape, w, h);
-        }
-
-        function onDrawEnd(e) {
-            canvas.releasePointerCapture(e.pointerId);
-            canvas.removeEventListener('pointermove', onDrawMove);
-            canvas.removeEventListener('pointerup', onDrawEnd);
-
-            if (currentDrawShape) {
-                const w = parseInt(currentDrawShape.style.width) || 0;
-                const h = parseInt(currentDrawShape.style.height) || 0;
-
-                if (w < 20 || h < 20) {
-                    currentDrawShape.remove(); // שרטוט קטן מדי מבוטל
-                } else {
-                    currentDrawShape.classList.remove('drawing', 'border-dashed');
-                    currentDrawShape.classList.add('drawn-shape');
-                    currentDrawShape.style.backgroundColor = '#cbd5e1';
-                    currentDrawShape.dataset.type = 'countertop';
-                    currentDrawShape.dataset.name = 'שיש / אי';
-                    currentDrawShape.style.zIndex = 1;
-                    currentDrawShape.dataset.elevation = getDefaultElevation('countertop');
-                    makeInteractive(currentDrawShape, 'שיש / אי');
-                    selectElement(currentDrawShape);
-                    saveState(); // שמירת שרטוט חדש
-                }
-                currentDrawShape = null;
-            }
-            toggleDrawMode();
-        }
 
         function updateLabel(el, pxWidth, pxHeight) {
             const label = el.querySelector('.dim-label');
@@ -1145,7 +1146,9 @@
                 z: parseInt(selectedElement.style.zIndex) || 1,
                 e: selectedElement.dataset.elevation !== undefined ? selectedElement.dataset.elevation : getDefaultElevation(selectedElement.dataset.type),
                 handle: selectedElement.dataset.handle || 'left',
-                front: selectedElement.dataset.front || 'front'
+                front: selectedElement.dataset.front || 'front',
+                left: parseInt(selectedElement.style.left) || 0,
+                top: parseInt(selectedElement.style.top) || 0
             };
             showToast("הפריט הועתק! (Ctrl+C)");
         }
@@ -1153,12 +1156,9 @@
         function pasteElement() {
             if (!clipboardData) return;
 
-            const scrollRect = scrollContainer.getBoundingClientRect();
-            const visibleCenterX = scrollContainer.scrollLeft + (scrollRect.width / 2);
-            const visibleCenterY = scrollContainer.scrollTop + (scrollRect.height / 2);
-
-            const snapX = Math.round((visibleCenterX - (clipboardData.wPx / 2)) / GRID_SIZE) * GRID_SIZE;
-            const snapY = Math.round((visibleCenterY - (clipboardData.hPx / 2)) / GRID_SIZE) * GRID_SIZE;
+            // מדביקים קצת בצד מהמקור כדי שהפריט המודבק תמיד יראה בבירור ולא יוסתר מתחת למקור
+            const snapX = clipboardData.left + (GRID_SIZE * 2);
+            const snapY = clipboardData.top + (GRID_SIZE * 2);
 
             const el = document.createElement('div');
             el.className = 'kitchen-item';
@@ -1182,6 +1182,10 @@
             canvas.appendChild(el);
             makeInteractive(el, clipboardData.name);
             selectElement(el);
+
+            // מקדמים את מיקום ההדבקה כדי שהדבקות חוזרות (Ctrl+V, Ctrl+V...) ימשיכו במדרגות ולא יחפפו זו את זו
+            clipboardData.left = snapX;
+            clipboardData.top = snapY;
 
             showToast("הפריט הודבק!");
             saveState(); // שמירה לאחר הדבקה
@@ -1248,26 +1252,27 @@
             }
 
             // קיצורי דרך לאנדו / רידו
-            if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
+            // משתמשים ב-e.code (מיקום פיזי של המקש) ולא ב-e.key, כדי שהקיצורים יעבדו גם כשפריסת המקלדת היא עברית ולא רק אנגלית
+            if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') {
                 e.preventDefault();
                 if (e.shiftKey) redo();
                 else undo();
             }
-            if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y')) {
+            if ((e.ctrlKey || e.metaKey) && e.code === 'KeyY') {
                 e.preventDefault();
                 redo();
             }
 
             // קיצורי דרך להעתק הדבק
-            if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C')) {
+            if ((e.ctrlKey || e.metaKey) && e.code === 'KeyC') {
                 e.preventDefault();
                 copySelected();
             }
-            if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V')) {
+            if ((e.ctrlKey || e.metaKey) && e.code === 'KeyV') {
                 e.preventDefault();
                 pasteElement();
             }
-            if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')) {
+            if ((e.ctrlKey || e.metaKey) && e.code === 'KeyD') {
                 e.preventDefault();
                 duplicateSelected();
             }
@@ -1278,10 +1283,8 @@
         let panStartX, panStartY, scrollLeftStart, scrollTopStart;
 
         scrollContainer.addEventListener('pointerdown', (e) => {
-            // מאפשר גלילה רק אם לא לחצנו על רהיט ולא שרטטנו
+            // מאפשר גלילה רק אם לא לחצנו על רהיט
             if (e.target === scrollContainer || e.target === canvas) {
-                if (isDrawingMode) return;
-
                 isPanning = true;
                 panStartX = e.clientX;
                 panStartY = e.clientY;
@@ -1514,7 +1517,7 @@
             camera3D = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 5, 5000);
 
             // מנוע הרינדור
-            renderer3D = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+            renderer3D = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true, preserveDrawingBuffer: true });
             renderer3D.setSize(window.innerWidth, window.innerHeight);
             renderer3D.shadowMap.enabled = true;
             renderer3D.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -1697,6 +1700,8 @@
                     case 'oven': h = 86; activeMaterial = matMetal; break;
                     case 'bar-stool': h = 75; activeMaterial = matStoolSeat; break;
                     case 'shutter-cabinet': h = 130; activeMaterial = matMainCabinet; break;
+                    case 'dining-table': h = 75; activeMaterial = matMainCabinet; break;
+                    case 'chair': h = 90; activeMaterial = matMainCabinet; break;
                 }
 
                 const centerX = x + (w / 2);
@@ -1957,6 +1962,47 @@
                         glass.position.set(sashX, 0, 0);
                         itemGroup.add(glass);
                     });
+                } else if (type === 'dining-table') {
+                    // שולחן אוכל - משטח עליון עם 4 רגליים
+                    const topThickness = 4;
+                    const legSize = 6;
+                    const legInset = 8;
+                    const top = new THREE.Mesh(new THREE.BoxGeometry(w, topThickness, d), activeMaterial);
+                    top.position.set(0, h / 2 - topThickness / 2, 0);
+                    top.castShadow = true; top.receiveShadow = true;
+                    itemGroup.add(top);
+                    top.add(new THREE.LineSegments(new THREE.EdgesGeometry(top.geometry), new THREE.LineBasicMaterial({ color: 0x000000, opacity: 0.3, transparent: true })));
+                    const legHeight = h - topThickness;
+                    const legGeo = new THREE.BoxGeometry(legSize, legHeight, legSize);
+                    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => {
+                        const leg = new THREE.Mesh(legGeo, activeMaterial);
+                        leg.position.set(sx * (w / 2 - legInset), -h / 2 + legHeight / 2, sz * (d / 2 - legInset));
+                        leg.castShadow = true;
+                        itemGroup.add(leg);
+                    });
+                } else if (type === 'chair') {
+                    // כיסא רגיל - מושב, משענת גב ו-4 רגליים, מסתובב לפי כיוון הפנייה
+                    const chairFaceDir = resolveFaceDir(el.dataset.front, x, z, w, d);
+                    itemGroup.rotation.y = { front: 0, back: Math.PI, right: Math.PI / 2, left: -Math.PI / 2 }[chairFaceDir];
+                    const seatH = 45;
+                    const backH = h - seatH;
+                    const seatThickness = 4;
+                    const legSize = 3;
+                    const seat = new THREE.Mesh(new THREE.BoxGeometry(w, seatThickness, d), activeMaterial);
+                    seat.position.set(0, -h / 2 + seatH, 0);
+                    seat.castShadow = true;
+                    itemGroup.add(seat);
+                    const backrest = new THREE.Mesh(new THREE.BoxGeometry(w, backH, 2.5), activeMaterial);
+                    backrest.position.set(0, -h / 2 + seatH + backH / 2, -d / 2 + 2);
+                    backrest.castShadow = true;
+                    itemGroup.add(backrest);
+                    const legGeo = new THREE.BoxGeometry(legSize, seatH, legSize);
+                    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => {
+                        const leg = new THREE.Mesh(legGeo, activeMaterial);
+                        leg.position.set(sx * (w / 2 - legSize), -h / 2 + seatH / 2, sz * (d / 2 - legSize));
+                        leg.castShadow = true;
+                        itemGroup.add(leg);
+                    });
                 } else if (type === 'shutter-cabinet') {
                     // ארון תריס שיושב על השיש - תריס גלילה עם פסים אופקיים, מוזז חלקית כלפי מעלה כך שנראה פתוח
                     const sFaceDir = resolveFaceDir(el.dataset.front, x, z, w, d);
@@ -2213,36 +2259,47 @@
         // --- התחלת קוד חדש: מערכת שמירה וטעינה כקוד ---
         let codeModalMode = 'save';
 
-        function openSaveModal() {
-            codeModalMode = 'save';
-            const modal = document.getElementById('code-modal');
-            modal.style.display = 'flex';
-            modal.classList.remove('hidden');
-            document.getElementById('code-modal-title').innerText = 'שמירת שרטוט כקוד';
-            document.getElementById('code-modal-desc').innerText = 'העתיקי את הקוד הבא ושמרי אותו (למשל בוואטסאפ או בפתקים). תוכלי להדביק אותו כאן בהמשך כדי לשחזר את המטבח בדיוק כפי שהוא!';
-            document.getElementById('code-action-btn').innerText = 'העתק קוד 📋';
-
-            const textarea = document.getElementById('code-textarea');
-            textarea.readOnly = true;
-
+        // שמירה כקובץ להורדה למחשב - אמין יותר מהעתקה ידנית (Ctrl+C לפעמים לא נשמר)
+        function saveAsFile() {
             const jsonStr = getCurrentStateJSON();
             const base64Code = "KITCHEN_PLAN_" + btoa(encodeURIComponent(jsonStr));
-            textarea.value = base64Code;
+            const blob = new Blob([base64Code], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'תוכנית-מטבח.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast("קובץ התוכנית הורד! 💾");
         }
 
-        function openLoadModal() {
-            codeModalMode = 'load';
-            const modal = document.getElementById('code-modal');
-            modal.style.display = 'flex';
-            modal.classList.remove('hidden');
-            document.getElementById('code-modal-title').innerText = 'טעינת שרטוט מקוד';
-            document.getElementById('code-modal-desc').innerText = 'הדביקי כאן את קוד השרטוט ששמרת בעבר, ולחצי על "טען שרטוט".';
-            document.getElementById('code-action-btn').innerText = 'טען שרטוט 🚀';
+        // טעינה מקובץ שהורד בעבר
+        function loadFromFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
 
-            const textarea = document.getElementById('code-textarea');
-            textarea.readOnly = false;
-            textarea.value = '';
-            textarea.focus();
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const code = e.target.result.trim();
+                if (!code.startsWith("KITCHEN_PLAN_")) {
+                    showToast("❌ קובץ לא תקין. ודאי שבחרת את קובץ התוכנית הנכון.");
+                    return;
+                }
+                try {
+                    const base64Str = code.replace("KITCHEN_PLAN_", "");
+                    const jsonStr = decodeURIComponent(atob(base64Str));
+                    loadStateFromJSON(jsonStr);
+                    saveState();
+                    showToast("השרטוט נטען בהצלחה! 🎉");
+                } catch (err) {
+                    showToast("❌ שגיאה בטעינת הקובץ. ייתכן שהוא פגום.");
+                    console.error(err);
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
         }
 
         function closeCodeModal() {
@@ -2250,36 +2307,248 @@
             document.getElementById('code-modal').classList.add('hidden');
         }
 
+        function openHelpModal() {
+            const modal = document.getElementById('help-modal');
+            modal.style.display = 'flex';
+            modal.classList.remove('hidden');
+        }
+
+        function closeHelpModal() {
+            const modal = document.getElementById('help-modal');
+            modal.style.display = 'none';
+            modal.classList.add('hidden');
+        }
+
+        // --- התחלת קוד חדש: צילום מסך של התלת-מימד ---
+        function takeScreenshot3D() {
+            if (!renderer3D || !scene3D || !camera3D) return;
+            renderer3D.render(scene3D, camera3D); // מרנדר פריים טרי לפני הצילום
+            const dataUrl = renderer3D.domElement.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = dataUrl;
+            a.download = 'מטבח-תלת-מימד-צילום-מסך.png';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            showToast('צילום המסך הורד! 📸');
+        }
+        // --- סוף קוד חדש ---
+
+        // --- התחלת קוד חדש: יצירת פרומפט לעיצוב ריאליסטי ---
+        function describeColor(hex) {
+            // המרה גסה של hex לשם צבע קרוב, לתיאור ידידותי בפרומפט
+            const c = hex.replace('#', '');
+            const r = parseInt(c.substring(0, 2), 16);
+            const g = parseInt(c.substring(2, 4), 16);
+            const b = parseInt(c.substring(4, 6), 16);
+            const colors = [
+                { name: 'black', rgb: [0, 0, 0] }, { name: 'white', rgb: [255, 255, 255] },
+                { name: 'gray', rgb: [128, 128, 128] }, { name: 'red', rgb: [220, 38, 38] },
+                { name: 'orange', rgb: [234, 88, 12] }, { name: 'yellow', rgb: [234, 179, 8] },
+                { name: 'green', rgb: [22, 163, 74] }, { name: 'teal', rgb: [13, 148, 136] },
+                { name: 'blue', rgb: [37, 99, 235] }, { name: 'navy blue', rgb: [30, 58, 138] },
+                { name: 'purple', rgb: [147, 51, 234] }, { name: 'pink', rgb: [219, 39, 119] },
+            ];
+            let best = colors[0], bestDist = Infinity;
+            colors.forEach(cl => {
+                const d = (r - cl.rgb[0]) ** 2 + (g - cl.rgb[1]) ** 2 + (b - cl.rgb[2]) ** 2;
+                if (d < bestDist) { bestDist = d; best = cl; }
+            });
+            return best.name;
+        }
+
+        function buildDesignPrompt() {
+            const items = Array.from(document.querySelectorAll('.kitchen-item'));
+            const cabStyle = document.getElementById('global-cabinet-style').value;
+            const cabColor = document.getElementById('global-cabinet-color').value;
+            const marbleStyle = document.getElementById('global-marble-style').value;
+
+            // תיאור סגנון הארונות - לפי מה שנבחר בפועל בתפריט העיצוב
+            let cabinetDesc;
+            if (cabStyle === 'rustic-white') {
+                cabinetDesc = 'white shaker-style rustic farmhouse cabinets';
+            } else if (cabStyle === 'modern') {
+                cabinetDesc = `sleek modern flat-panel cabinets in a ${describeColor(cabColor)} tone (${cabColor})`;
+            } else {
+                cabinetDesc = 'natural light wood-tone cabinets with visible wood grain';
+            }
+
+            // תיאור סגנון השיש - לפי מה שנבחר בפועל
+            let counterDesc;
+            if (marbleStyle === 'black-marble') {
+                counterDesc = 'a black marble countertop with dramatic gold and white veining';
+            } else if (marbleStyle === 'concrete') {
+                counterDesc = 'a matte polished concrete countertop';
+            } else {
+                counterDesc = 'a white marble countertop with soft grey veining';
+            }
+
+            // זיהוי גס של צורת המטבח לפי מספר הקירות שצוירו
+            const wallCount = items.filter(el => el.dataset.type === 'wall').length;
+            let shapeDesc;
+            if (wallCount >= 3) shapeDesc = 'U-shaped';
+            else if (wallCount === 2) shapeDesc = 'L-shaped corner';
+            else if (wallCount === 1) shapeDesc = 'single-wall galley-style';
+            else shapeDesc = 'open-plan';
+
+            const has = type => items.some(el => el.dataset.type === type);
+            const count = type => items.filter(el => el.dataset.type === type).length;
+
+            const featureSentences = [];
+
+            const structureBits = [];
+            if (has('base')) structureBits.push('base cabinets');
+            if (has('drawers')) structureBits.push('drawer units with sleek horizontal pulls');
+            if (has('tall')) structureBits.push('a tall pantry cabinet');
+            if (has('ceiling-cabinet') || has('upper-to-ceiling')) structureBits.push('wall cabinets extending all the way up to the ceiling');
+            if (has('upper-cabinet')) structureBits.push('standard wall-mounted upper cabinets');
+            if (has('shutter-cabinet')) structureBits.push('a small appliance-garage cabinet with a metallic tambour roller shutter, partly open');
+            featureSentences.push(structureBits.length
+                ? `Cabinetry: ${cabinetDesc}, including ${structureBits.join(', ')}.`
+                : `Cabinetry: ${cabinetDesc}.`);
+
+            featureSentences.push(`Countertop: ${counterDesc}.`);
+
+            const applianceBits = [];
+            if (has('fridge')) applianceBits.push('a stainless-steel French-door refrigerator with four doors');
+            if (has('oven-built-in')) applianceBits.push('a built-in oven with a dark glass door and a brushed steel handle');
+            if (has('oven')) applianceBits.push('a freestanding oven with a dark glass door and a full-width steel handle');
+            if (has('hob')) applianceBits.push('a black ceramic cooktop set into the counter');
+            if (has('dishwasher')) applianceBits.push('a built-in stainless-steel dishwasher panel');
+            if (has('sink')) applianceBits.push('a white ceramic sink with a chrome gooseneck faucet');
+            if (applianceBits.length) featureSentences.push(`Appliances: ${applianceBits.join('; ')}.`);
+
+            if (has('window')) {
+                const n = count('window');
+                featureSentences.push(n > 1
+                    ? `${n} windows with white frames are mounted on the walls above the counter, letting in natural daylight.`
+                    : 'A window with a white frame is mounted on the wall above the counter, letting in natural daylight.');
+            }
+
+            if (has('shelves')) {
+                featureSentences.push('Open wood shelving is mounted on the wall for displaying decor items.');
+            }
+
+            if (has('bar-stool')) {
+                const n = count('bar-stool');
+                featureSentences.push(n > 1
+                    ? `${n} bar stools at the counter/island - design them to match and complement the overall kitchen style described here, rather than any specific literal shape.`
+                    : 'A bar stool at the counter/island - design it to match and complement the overall kitchen style described here, rather than any specific literal shape.');
+            }
+
+            return `A photorealistic interior photograph of a ${shapeDesc} kitchen, shot at eye level.
+
+${featureSentences.join('\n\n')}
+
+Lighting: soft natural daylight mixed with warm ambient interior lighting, gentle realistic shadows. Light-colored floor tiles. Style: clean, modern-traditional, well-organized, no clutter, warm and inviting atmosphere.
+
+Feel free to add small tasteful decorative touches (like a potted plant, a few small decor items, or subtle lighting accents) for a realistic, lived-in feel - but do not alter the cabinet layout, counter shape, room structure, or the placement of appliances. Keep the structural design exactly as described above.
+
+Camera: wide-angle interior architectural photography, eye-level, sharp focus, realistic materials and textures, 4K quality.`;
+        }
+
+        function openPromptModal() {
+            codeModalMode = 'prompt';
+            const modal = document.getElementById('code-modal');
+            modal.style.display = 'flex';
+            modal.classList.remove('hidden');
+            document.getElementById('code-modal-title').innerText = 'פרומפט לעיצוב ריאליסטי';
+            document.getElementById('code-modal-desc').innerText = 'הדביקי את הטקסט הזה בכלי ליצירת תמונות (כמו GPT/DALL-E) - יש לצרף גם את תמונת ההדמיה שהורדת בצילום המסך - כדי לקבל הדמיה ריאליסטית של המטבח.';
+            document.getElementById('code-action-btn').innerText = 'העתק פרומפט 📋';
+
+            const textarea = document.getElementById('code-textarea');
+            textarea.readOnly = true;
+            textarea.dir = 'ltr';
+            textarea.value = buildDesignPrompt();
+        }
+        // --- סוף קוד חדש ---
+
         function copyOrLoadCode() {
             const textarea = document.getElementById('code-textarea');
-            if (codeModalMode === 'save') {
-                textarea.select();
-                document.execCommand('copy');
-                showToast("הקוד הועתק! שמרי אותו במקום בטוח.");
-                closeCodeModal();
-            } else {
-                const code = textarea.value.trim();
-                if (!code.startsWith("KITCHEN_PLAN_")) {
-                    showToast("❌ קוד לא תקין. ודאי שהעתקת את כל הקוד בשלמותו.");
-                    return;
-                }
+            textarea.select();
+            document.execCommand('copy');
+            showToast("הפרומפט הועתק! הדביקי אותו בכלי ליצירת תמונות, ויש לצרף גם את תמונת ההדמיה.");
+            closeCodeModal();
+        }
+        // --- סוף קוד חדש ---
 
-                try {
-                    // פענוח הקוד
-                    const base64Str = code.replace("KITCHEN_PLAN_", "");
-                    const jsonStr = decodeURIComponent(atob(base64Str));
+        // --- התחלת קוד חדש: הורדת הדמיית 3D כקובץ HTML עצמאי ---
+        function downloadStandalone3D() {
+            const itemsData = JSON.parse(getCurrentStateJSON());
+            const cabStyle = document.getElementById('global-cabinet-style').value;
+            const cabColor = document.getElementById('global-cabinet-color').value;
+            const marbleStyle = document.getElementById('global-marble-style').value;
 
-                    loadStateFromJSON(jsonStr); // שימוש בפונקציית הטעינה של Undo
-                    saveState(); // שומר את המצב החדש כנקודת חזרה נוספת
+            // לוקח את הקוד בפועל של הפונקציות הקיימות, כדי שהקובץ המיוצא תמיד יתאים למה שרואים כאן
+            const funcSources = [
+                createWoodTexture, createRusticWhiteTexture, createMarbleTexture,
+                createBlackMarbleTexture, createConcreteTexture, createOvenGlassTexture,
+                getDefaultElevation, init3D, onWindowResize3D, animate3D
+            ].map(fn => fn.toString()).join('\n\n');
 
-                    showToast("השרטוט נטען בהצלחה! 🎉");
-                    closeCodeModal();
+            const html = '<!DOCTYPE html>\n' +
+'<html lang="he" dir="rtl">\n' +
+'<head>\n' +
+'<meta charset="UTF-8">\n' +
+'<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n' +
+'<title>הדמיית מטבח תלת מימד</title>\n' +
+'<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>\n' +
+'<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"><\/script>\n' +
+'<style>\n' +
+'  html, body { margin:0; padding:0; overflow:hidden; background:#0f172a; height:100%; }\n' +
+'  #canvas-3d { position:fixed; inset:0; width:100vw; height:100dvh; }\n' +
+'  #instructions-3d { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(15,23,42,0.8); color: #fff; padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: 500; font-family: sans-serif; pointer-events: none; z-index: 10; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.1); }\n' +
+'  #items-source { display: none; }\n' +
+'</style>\n' +
+'</head>\n' +
+'<body>\n' +
+'<div id="instructions-3d">גררי עם העכבר/אצבע כדי להסתובב | גלגלי כדי להתקרב 🔍</div>\n' +
+'<div id="canvas-3d"></div>\n' +
+'<select id="global-cabinet-style" style="display:none"><option value="' + cabStyle + '" selected>x</option></select>\n' +
+'<input type="color" id="global-cabinet-color" style="display:none" value="' + cabColor + '">\n' +
+'<select id="global-marble-style" style="display:none"><option value="' + marbleStyle + '" selected>x</option></select>\n' +
+'<div id="items-source"></div>\n' +
+'<script>\n' +
+'const PX_PER_CM = 2;\n' +
+'const GRID_SIZE = 20;\n' +
+'const ITEMS_DATA = ' + JSON.stringify(itemsData) + ';\n\n' +
+funcSources + '\n\n' +
+'let scene3D, camera3D, renderer3D, controls3D, animationId3D;\n\n' +
+'(function rebuildItems() {\n' +
+'    const container = document.getElementById("items-source");\n' +
+'    ITEMS_DATA.forEach(item => {\n' +
+'        const el = document.createElement("div");\n' +
+'        el.className = "kitchen-item";\n' +
+'        el.dataset.type = item.t;\n' +
+'        el.dataset.name = item.n;\n' +
+'        el.style.width = item.w + "px";\n' +
+'        el.style.height = item.h + "px";\n' +
+'        el.style.backgroundColor = item.bg;\n' +
+'        el.style.left = item.l + "px";\n' +
+'        el.style.top = item.top + "px";\n' +
+'        el.style.zIndex = item.z !== undefined ? item.z : 1;\n' +
+'        el.dataset.elevation = item.e !== undefined ? item.e : getDefaultElevation(item.t);\n' +
+'        el.dataset.handle = item.h_side !== undefined ? item.h_side : "left";\n' +
+'        el.dataset.front = item.front !== undefined ? item.front : "front";\n' +
+'        container.appendChild(el);\n' +
+'    });\n' +
+'})();\n\n' +
+'init3D();\n' +
+'<\/script>\n' +
+'</body>\n' +
+'</html>';
 
-                } catch (e) {
-                    showToast("❌ שגיאה בטעינת הקוד. ייתכן שהוא פגום.");
-                    console.error(e);
-                }
-            }
+            const blob = new Blob([html], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'הדמיית-מטבח-3D.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showToast('ההדמיה הורדה למחשב! 🎉');
         }
         // --- סוף קוד חדש ---
 
