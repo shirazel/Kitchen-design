@@ -96,24 +96,36 @@
             display: block;
         }
 
-        .resizer {
-            width: 24px;
-            height: 24px;
+        .resize-handle {
+            width: 20px;
+            height: 20px;
             background-color: #ef4444;
             border: 2px solid white;
             border-radius: 50%;
             position: absolute;
-            bottom: -12px;
-            right: -12px;
-            cursor: se-resize;
             display: none;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             z-index: 20;
             touch-action: none;
         }
+        .resize-handle.nw { top: -10px; left: -10px; cursor: nw-resize; }
+        .resize-handle.ne { top: -10px; right: -10px; cursor: ne-resize; }
+        .resize-handle.sw { bottom: -10px; left: -10px; cursor: sw-resize; }
+        .resize-handle.se { bottom: -10px; right: -10px; cursor: se-resize; }
 
-        .kitchen-item.selected .resizer {
+        .kitchen-item.selected .resize-handle {
             display: block;
+        }
+
+        #bg-plan-wrapper.selected .resize-handle {
+            display: block;
+        }
+
+        #bg-plan-wrapper.locked {
+            cursor: default;
+        }
+        #bg-plan-wrapper.locked .resize-handle {
+            display: none !important;
         }
 
         .item-name {
@@ -263,6 +275,33 @@
                     <span class="text-xs font-bold text-indigo-800">הורד הדמיית 3D כקובץ נפרד</span>
                 </button>
             </div>
+
+            <!-- התחלת קוד חדש: שרטוט רקע לעקיבה -->
+            <div id="bg-plan-section" class="mt-2 p-2 bg-slate-100 border border-slate-300 rounded shadow-sm flex flex-col gap-2">
+                <h3 class="text-xs font-bold text-slate-700 text-center">שרטוט רקע (לעקיבה)</h3>
+                <button id="bg-plan-upload-btn" class="w-full bg-white hover:bg-slate-50 border border-slate-300 p-2 rounded flex items-center justify-center gap-2 transition-colors shadow-sm text-xs font-bold text-slate-700" onclick="document.getElementById('bg-plan-input').click()">
+                    📐 העלה תוכנית דו-ממדית
+                </button>
+                <input type="file" id="bg-plan-input" accept="image/*" style="display:none" onchange="loadBgPlan(event)">
+
+                <div id="bg-plan-controls" class="hidden flex flex-col gap-2">
+                    <label class="text-[11px] text-slate-600">שקיפות
+                        <input type="range" id="bg-plan-opacity" min="0.1" max="1" step="0.05" value="0.4" class="w-full" oninput="updateBgPlanOpacity(this.value)">
+                    </label>
+                    <div class="flex gap-2">
+                        <label class="text-[11px] text-slate-600 flex-1">רוחב (ס"מ)
+                            <input type="number" id="bg-plan-width" value="400" min="10" step="10" class="w-full border border-slate-300 rounded p-1 text-xs" onchange="updateBgPlanSize()">
+                        </label>
+                        <label class="text-[11px] text-slate-600 flex-1">גובה (ס"מ)
+                            <input type="number" id="bg-plan-height" value="400" min="10" step="10" class="w-full border border-slate-300 rounded p-1 text-xs" onchange="updateBgPlanSize()">
+                        </label>
+                    </div>
+                    <p class="text-[10px] text-slate-400">אפשר לגרור את התמונה בקנבס כדי להזיז אותה</p>
+                    <button id="bg-plan-lock-btn" class="w-full bg-slate-200 hover:bg-slate-300 border border-slate-300 p-1.5 rounded text-[11px] font-bold text-slate-700" onclick="toggleBgPlanLock()">🔓 נעל שרטוט (מנע הזזה בטעות)</button>
+                    <button class="w-full bg-red-100 hover:bg-red-200 border border-red-300 p-1.5 rounded text-[11px] font-bold text-red-700" onclick="removeBgPlan()">הסר שרטוט רקע</button>
+                </div>
+            </div>
+            <!-- סוף קוד חדש -->
 
             <!-- תפריט עיצוב ל-3D -->
             <div class="mt-2 p-2 bg-slate-100 border border-slate-300 rounded shadow-sm flex flex-col gap-2">
@@ -477,6 +516,12 @@
                     <input type="number" id="prop-elevation" class="w-full border border-slate-300 rounded p-1 text-center font-bold text-slate-700" step="1">
                 </div>
                 <div class="flex-1">
+                    <label class="text-[11px] text-slate-500 mb-0.5 block text-center">גובה הפריט (ל-3D)</label>
+                    <input type="number" id="prop-height3d" class="w-full border border-slate-300 rounded p-1 text-center font-bold text-slate-700" step="1" min="1">
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <div class="flex-1">
                     <label class="text-[11px] text-slate-500 mb-0.5 block text-center">שכבת תצוגה (ל-2D)</label>
                     <div class="flex gap-1">
                         <button class="flex-1 bg-slate-200 hover:bg-slate-300 border border-slate-300 rounded p-1 text-[10px] font-bold shadow-sm" onclick="changeZIndex(1)" title="הבא לקדימה">⬆️ למעלה</button>
@@ -498,10 +543,9 @@
             </div>
 
             <div id="prop-handle-wrap">
-                <label class="text-[11px] text-slate-500 mb-0.5 block text-center">צד ידית (ל-3D)</label>
+                <label class="text-[11px] text-slate-500 mb-0.5 block text-center">ידית (ל-3D)</label>
                 <select id="prop-handle" class="w-full border border-slate-300 rounded p-1 text-center text-sm font-bold text-slate-700 bg-white" onchange="updateHandleSide()">
-                    <option value="left">שמאל</option>
-                    <option value="right">ימין</option>
+                    <option value="center">עם ידית</option>
                     <option value="none">ללא ידית</option>
                 </select>
             </div>
@@ -534,6 +578,13 @@
 
     <main id="scroll-container" class="flex-1 relative overflow-auto bg-slate-300">
         <div id="canvas-container">
+            <div id="bg-plan-wrapper" style="display:none; position:absolute; top:0; left:0; z-index:0; cursor:move; touch-action:none;">
+                <img id="bg-plan-image" style="display:block; width:100%; height:100%; pointer-events:none; user-select:none;">
+                <div class="resize-handle nw" data-corner="nw"></div>
+                <div class="resize-handle ne" data-corner="ne"></div>
+                <div class="resize-handle sw" data-corner="sw"></div>
+                <div class="resize-handle se" data-corner="se"></div>
+            </div>
             <!-- Items injected here -->
         </div>
     </main>
@@ -619,6 +670,7 @@
         const inputName = document.getElementById('prop-name');
         const inputType = document.getElementById('prop-type');
         const inputElevation = document.getElementById('prop-elevation');
+        const inputHeight3D = document.getElementById('prop-height3d');
         const inputHandle = document.getElementById('prop-handle');
         const handleWrap = document.getElementById('prop-handle-wrap');
         const inputFront = document.getElementById('prop-front');
@@ -646,6 +698,49 @@
                 case 'oven-built-in': return 45;
                 default: return 0;
             }
+        }
+
+        // גובה ברירת המחדל של הפריט בתלת-ממד (ס"מ) - חייב להישאר מסונכרן עם ה-switch המקביל בתוך init3D
+        function getDefaultHeight3D(type) {
+            switch(type) {
+                case 'wall': return 280;
+                case 'window': return 100;
+                case 'countertop': return 4;
+                case 'tall': return 230;
+                case 'ceiling-cabinet': return 280;
+                case 'upper-cabinet': return 80;
+                case 'upper-to-ceiling': return 130;
+                case 'base': return 86;
+                case 'fridge': return 190;
+                case 'sink': return 15;
+                case 'hob': return 3;
+                case 'dishwasher': return 86;
+                case 'shelves': return 4;
+                case 'drawers': return 86;
+                case 'oven-built-in': return 60;
+                case 'oven': return 86;
+                case 'bar-stool': return 75;
+                case 'shutter-cabinet': return 130;
+                case 'dining-table': return 75;
+                case 'chair': return 90;
+                default: return 90;
+            }
+        }
+
+        // בארונות הגבוהים מאוד ידית אחת ממורכזת נראית לא נכון, לכן ברירת המחדל שלהם היא בלי ידית
+        function getDefaultHandle(type) {
+            switch(type) {
+                case 'tall':
+                case 'ceiling-cabinet': return 'none';
+                default: return 'center';
+            }
+        }
+
+        // תאימות לאחור: קבצים ותוכניות שנשמרו כשהידיות היו 'left'/'right' - כולם נחשבים כ"עם ידית"
+        function normalizeHandle(val, type) {
+            if (val === 'none') return 'none';
+            if (val === undefined || val === '') return getDefaultHandle(type);
+            return 'center';
         }
 
         function onPropTypeChange() {
@@ -813,7 +908,7 @@
 
             el.style.zIndex = zIndex !== undefined ? zIndex : 1;
             el.dataset.elevation = elevation !== undefined ? elevation : getDefaultElevation(type);
-            el.dataset.handle = handle !== undefined ? handle : 'left';
+            el.dataset.handle = normalizeHandle(handle, type);
             el.dataset.front = front !== undefined ? front : 'front';
 
             const label = document.createElement('div');
@@ -831,14 +926,21 @@
             nameSpan.innerHTML = name;
             el.appendChild(nameSpan);
 
-            const resizer = document.createElement('div');
-            resizer.className = 'resizer';
-            el.appendChild(resizer);
+            const corners = ['nw', 'ne', 'sw', 'se'];
+            const resizeHandles = {};
+            corners.forEach(corner => {
+                const handle = document.createElement('div');
+                handle.className = 'resize-handle ' + corner;
+                handle.dataset.corner = corner;
+                el.appendChild(handle);
+                resizeHandles[corner] = handle;
+            });
 
             updateLabel(el, parseInt(el.style.width), parseInt(el.style.height));
 
             let isDragging = false;
             let isResizing = false;
+            let resizeCorner = null;
             let pStartX, pStartY, elStartLeft, elStartTop, elStartWidth, elStartHeight;
 
             el.addEventListener('pointerdown', (e) => {
@@ -855,8 +957,9 @@
                 elStartWidth = parseInt(el.style.width) || 0;
                 elStartHeight = parseInt(el.style.height) || 0;
 
-                if (e.target === resizer) {
+                if (e.target.classList.contains('resize-handle')) {
                     isResizing = true;
+                    resizeCorner = e.target.dataset.corner;
                 } else {
                     isDragging = true;
                     // מסתיר את התווית בזמן גרירה כדי שלא תפריע לעין!
@@ -873,8 +976,17 @@
                 const dy = e.clientY - pStartY;
 
                 if (isResizing) {
-                    let newWidth = Math.max(20, elStartWidth + dx);
-                    let newHeight = Math.max(20, elStartHeight + dy);
+                    const growX = (resizeCorner === 'ne' || resizeCorner === 'se') ? dx : -dx;
+                    const growY = (resizeCorner === 'sw' || resizeCorner === 'se') ? dy : -dy;
+                    let newWidth = Math.max(20, elStartWidth + growX);
+                    let newHeight = Math.max(20, elStartHeight + growY);
+
+                    if (resizeCorner === 'nw' || resizeCorner === 'sw') {
+                        el.style.left = (elStartLeft + (elStartWidth - newWidth)) + 'px';
+                    }
+                    if (resizeCorner === 'nw' || resizeCorner === 'ne') {
+                        el.style.top = (elStartTop + (elStartHeight - newHeight)) + 'px';
+                    }
 
                     el.style.width = newWidth + 'px';
                     el.style.height = newHeight + 'px';
@@ -895,17 +1007,6 @@
                 el.releasePointerCapture(e.pointerId);
 
                 if (isDragging || isResizing) {
-                    // שחרור - הצמדה למשבצות חזקה!
-                    let finalW = Math.round(parseInt(el.style.width) / GRID_SIZE) * GRID_SIZE;
-                    let finalH = Math.round(parseInt(el.style.height) / GRID_SIZE) * GRID_SIZE;
-                    let finalL = Math.round(parseInt(el.style.left) / GRID_SIZE) * GRID_SIZE;
-                    let finalT = Math.round(parseInt(el.style.top) / GRID_SIZE) * GRID_SIZE;
-
-                    el.style.width = Math.max(20, finalW) + 'px';
-                    el.style.height = Math.max(20, finalH) + 'px';
-                    el.style.left = finalL + 'px';
-                    el.style.top = finalT + 'px';
-
                     updateLabel(el, parseInt(el.style.width), parseInt(el.style.height));
                 }
 
@@ -944,8 +1045,9 @@
                     d: el.classList.contains('drawn-shape') ? 1 : 0,
                     z: parseInt(el.style.zIndex) || 1,
                     e: el.hasAttribute('data-elevation') ? parseInt(el.dataset.elevation) : getDefaultElevation(el.dataset.type),
-                    h_side: el.dataset.handle || 'left',
-                    front: el.dataset.front || 'front'
+                    h_side: normalizeHandle(el.dataset.handle, el.dataset.type),
+                    front: el.dataset.front || 'front',
+                    h3d: el.dataset.height3d !== undefined ? parseFloat(el.dataset.height3d) : getDefaultHeight3D(el.dataset.type)
                 });
             });
             return JSON.stringify(projectData);
@@ -969,7 +1071,7 @@
             try {
                 const projectData = JSON.parse(jsonStr);
 
-                canvas.innerHTML = '';
+                canvas.querySelectorAll('.kitchen-item').forEach(el => el.remove());
                 selectElement(null);
 
                 projectData.forEach(item => {
@@ -985,8 +1087,9 @@
                     el.style.top = item.top + 'px';
                     el.style.zIndex = item.z !== undefined ? item.z : 1;
                     el.dataset.elevation = item.e !== undefined ? item.e : getDefaultElevation(item.t);
-                    el.dataset.handle = item.h_side !== undefined ? item.h_side : 'left';
+                    el.dataset.handle = normalizeHandle(item.h_side, item.t);
                     el.dataset.front = item.front !== undefined ? item.front : 'front';
+                    el.dataset.height3d = item.h3d !== undefined ? item.h3d : getDefaultHeight3D(item.t);
 
                     const label = document.createElement('div');
                     label.className = 'dim-label';
@@ -1039,6 +1142,7 @@
                 selectedElement.classList.remove('selected');
             }
             selectedElement = el;
+            bgPlanWrapper.classList.remove('selected'); // בחירת פריט (או ביטול בחירה) מבטלת גם את בחירת שרטוט הרקע
             if (selectedElement) {
                 selectedElement.classList.add('selected');
 
@@ -1057,7 +1161,10 @@
                 const currentElev = selectedElement.dataset.elevation;
                 inputElevation.value = currentElev !== undefined ? currentElev : getDefaultElevation(inputType.value);
 
-                inputHandle.value = selectedElement.dataset.handle || 'left';
+                const currentHeight3D = selectedElement.dataset.height3d;
+                inputHeight3D.value = currentHeight3D !== undefined ? currentHeight3D : getDefaultHeight3D(inputType.value);
+
+                inputHandle.value = normalizeHandle(selectedElement.dataset.handle, selectedElement.dataset.type);
                 inputFront.value = selectedElement.dataset.front || 'front';
                 onPropTypeChange();
             } else {
@@ -1106,6 +1213,10 @@
             if (isNaN(elevVal)) elevVal = getDefaultElevation(inputType.value);
             selectedElement.dataset.elevation = elevVal;
 
+            let height3DVal = parseFloat(inputHeight3D.value);
+            if (isNaN(height3DVal) || height3DVal <= 0) height3DVal = getDefaultHeight3D(inputType.value);
+            selectedElement.dataset.height3d = height3DVal;
+
             selectedElement.dataset.handle = inputHandle.value;
             selectedElement.dataset.front = inputFront.value;
 
@@ -1145,8 +1256,9 @@
                 isDrawnShape: selectedElement.classList.contains('drawn-shape'),
                 z: parseInt(selectedElement.style.zIndex) || 1,
                 e: selectedElement.dataset.elevation !== undefined ? selectedElement.dataset.elevation : getDefaultElevation(selectedElement.dataset.type),
-                handle: selectedElement.dataset.handle || 'left',
+                handle: normalizeHandle(selectedElement.dataset.handle, selectedElement.dataset.type),
                 front: selectedElement.dataset.front || 'front',
+                height3d: selectedElement.dataset.height3d !== undefined ? selectedElement.dataset.height3d : getDefaultHeight3D(selectedElement.dataset.type),
                 left: parseInt(selectedElement.style.left) || 0,
                 top: parseInt(selectedElement.style.top) || 0
             };
@@ -1172,8 +1284,9 @@
             el.style.top = snapY + 'px';
             el.style.zIndex = clipboardData.z;
             el.dataset.elevation = clipboardData.e !== undefined ? clipboardData.e : getDefaultElevation(clipboardData.type);
-            el.dataset.handle = clipboardData.handle || 'left';
+            el.dataset.handle = normalizeHandle(clipboardData.handle, clipboardData.type);
             el.dataset.front = clipboardData.front || 'front';
+            el.dataset.height3d = clipboardData.height3d !== undefined ? clipboardData.height3d : getDefaultHeight3D(clipboardData.type);
 
             const label = document.createElement('div');
             label.className = 'dim-label';
@@ -1202,8 +1315,9 @@
             const isDrawnShape = selectedElement.classList.contains('drawn-shape');
             const z = parseInt(selectedElement.style.zIndex) || 1;
             const e = selectedElement.dataset.elevation !== undefined ? selectedElement.dataset.elevation : getDefaultElevation(type);
-            const handle = selectedElement.dataset.handle || 'left';
+            const handle = normalizeHandle(selectedElement.dataset.handle, type);
             const front = selectedElement.dataset.front || 'front';
+            const height3d = selectedElement.dataset.height3d !== undefined ? selectedElement.dataset.height3d : getDefaultHeight3D(type);
 
             let currentLeft = parseInt(selectedElement.style.left);
             let currentTop = parseInt(selectedElement.style.top);
@@ -1226,6 +1340,7 @@
             el.dataset.elevation = e;
             el.dataset.handle = handle;
             el.dataset.front = front;
+            el.dataset.height3d = height3d;
 
             const label = document.createElement('div');
             label.className = 'dim-label';
@@ -1704,6 +1819,12 @@
                     case 'chair': h = 90; activeMaterial = matMainCabinet; break;
                 }
 
+                // גובה מותאם אישית שהוגדר בפאנל המאפיינים (אם הוגדר) - גובר על גובה ברירת המחדל של הסוג
+                if (el.dataset.height3d !== undefined) {
+                    const customH = parseFloat(el.dataset.height3d);
+                    if (!isNaN(customH) && customH > 0) h = customH;
+                }
+
                 const centerX = x + (w / 2);
                 const centerZ = z + (d / 2);
                 const centerY = yOffset + (h / 2);
@@ -1922,27 +2043,35 @@
                     itemGroup.add(botHandle2);
                 } else if (type === 'window') {
                     // חלון עם פתח פתוח באמת (לא בלוק אטום!) - מסגרת מ-4 רצועות, משקוף מרכזי וזגוגית בכל צד
+                    // מסתובב 90 מעלות כשהוא בקיר אנכי (צמוד לקיר בצד ימין/שמאל) - וגם מחליף אורך/עומק כך שהפתח יתאים בדיוק לאורך הקטע בקיר
+                    const winFaceDir = resolveFaceDir(el.dataset.front, x, z, w, d);
+                    const winRotated = (winFaceDir === 'right' || winFaceDir === 'left');
+                    if (winRotated) {
+                        itemGroup.rotation.y = Math.PI / 2;
+                    }
+                    const fW = winRotated ? d : w;
+                    const fD = winRotated ? w : d;
                     const frameMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.5 });
                     const glassMat = new THREE.MeshStandardMaterial({ color: 0xbfdbfe, transparent: true, opacity: 0.45, roughness: 0.1, metalness: 0.1 });
 
-                    const borderT = Math.max(4, Math.min(w, h) * 0.08);
+                    const borderT = Math.max(4, Math.min(fW, h) * 0.08);
                     const mullionW = 3;
-                    const openW = Math.max(1, w - borderT * 2);
+                    const openW = Math.max(1, fW - borderT * 2);
                     const openH = Math.max(1, h - borderT * 2);
-                    const glassDepth = Math.max(1, d * 0.3);
+                    const glassDepth = Math.max(1, fD * 0.3);
                     const sashW = Math.max(1, (openW - mullionW) / 2);
 
                     // 4 רצועות מסגרת סביב פתח פתוח
-                    const topBotGeo = new THREE.BoxGeometry(w, borderT, d);
+                    const topBotGeo = new THREE.BoxGeometry(fW, borderT, fD);
                     const top = new THREE.Mesh(topBotGeo, frameMat);
                     top.position.set(0, h / 2 - borderT / 2, 0);
                     const bottom = new THREE.Mesh(topBotGeo, frameMat);
                     bottom.position.set(0, -h / 2 + borderT / 2, 0);
-                    const sideGeo = new THREE.BoxGeometry(borderT, openH, d);
+                    const sideGeo = new THREE.BoxGeometry(borderT, openH, fD);
                     const left = new THREE.Mesh(sideGeo, frameMat);
-                    left.position.set(-w / 2 + borderT / 2, 0, 0);
+                    left.position.set(-fW / 2 + borderT / 2, 0, 0);
                     const right = new THREE.Mesh(sideGeo, frameMat);
-                    right.position.set(w / 2 - borderT / 2, 0, 0);
+                    right.position.set(fW / 2 - borderT / 2, 0, 0);
                     [top, bottom, left, right].forEach(piece => {
                         piece.castShadow = true;
                         piece.receiveShadow = true;
@@ -1952,7 +2081,7 @@
                     });
 
                     // משקוף מרכזי המפריד בין שני חלקי החלון (חוצה את הפתח לגמרי)
-                    const centerMullion = new THREE.Mesh(new THREE.BoxGeometry(mullionW, openH, d), frameMat);
+                    const centerMullion = new THREE.Mesh(new THREE.BoxGeometry(mullionW, openH, fD), frameMat);
                     itemGroup.add(centerMullion);
 
                     // שתי זגוגיות - אחת בכל משקוף, גלויות דרך הפתח
@@ -2167,6 +2296,7 @@
                     } else if (type !== 'shelves') {
                         // ארונות עם דלתות רגילות (base, tall, ceiling-cabinet, upper-cabinet, upper-to-ceiling) - מדפים פתוחים ללא דלתות/ידיות
                         const isDoubleDoor = faceW >= 80; // ארונות רחבים (לפי רוחב החזית בפועל) יקבלו 2 דלתות
+                        const showHandle = normalizeHandle(el.dataset.handle, type) !== 'none';
 
                         if (isDoubleDoor) {
                             // פס חלוקה באמצע מדמה שתי דלתות, במרכז החזית
@@ -2176,25 +2306,26 @@
                             separator.position.set(sx, sy, sz);
                             itemGroup.add(separator);
 
-                            // 2 ידיות במרכז הדלתות, בחזית בלבד
-                            const handle1 = new THREE.Mesh(faceBox(1.5, 18, 2), matMetal);
-                            const handle2 = new THREE.Mesh(faceBox(1.5, 18, 2), matMetal);
-                            const [h1x, h1y, h1z] = facePos(-4, 0, 1);
-                            const [h2x, h2y, h2z] = facePos(4, 0, 1);
-                            handle1.position.set(h1x, h1y, h1z);
-                            handle2.position.set(h2x, h2y, h2z);
-                            itemGroup.add(handle1);
-                            itemGroup.add(handle2);
-                        } else {
-                            // דלת אחת - ידית בצד שמאל או ימין לפי בחירה, במרכז גובה החזית ובחזית בלבד
-                            const handleSide = el.dataset.handle || 'left';
-                            if (handleSide !== 'none') {
-                                const handle = new THREE.Mesh(faceBox(1.5, 18, 2), matMetal);
-                                const handleU = handleSide === 'right' ? (faceW / 2 - 6) : (-faceW / 2 + 6);
-                                const [hx, hy, hz] = facePos(handleU, 0, 1);
-                                handle.position.set(hx, hy, hz);
-                                itemGroup.add(handle);
+                            // 2 ידיות מאוזנות - אחת ממורכזת בכל דלת
+                            if (showHandle) {
+                                const doorW = faceW / 2;
+                                const barLen = Math.max(10, doorW * 0.45);
+                                const handle1 = new THREE.Mesh(faceBox(barLen, 1.5, 2), matMetal);
+                                const handle2 = new THREE.Mesh(faceBox(barLen, 1.5, 2), matMetal);
+                                const [h1x, h1y, h1z] = facePos(-doorW / 2, 0, 1);
+                                const [h2x, h2y, h2z] = facePos(doorW / 2, 0, 1);
+                                handle1.position.set(h1x, h1y, h1z);
+                                handle2.position.set(h2x, h2y, h2z);
+                                itemGroup.add(handle1);
+                                itemGroup.add(handle2);
                             }
+                        } else if (showHandle) {
+                            // דלת אחת - ידית מאוזנת ממורכזת על הדלת
+                            const barLen = Math.max(10, faceW * 0.45);
+                            const handle = new THREE.Mesh(faceBox(barLen, 1.5, 2), matMetal);
+                            const [hx, hy, hz] = facePos(0, 0, 1);
+                            handle.position.set(hx, hy, hz);
+                            itemGroup.add(handle);
                         }
                     }
                 } else if (type === 'oven') {
@@ -2301,6 +2432,166 @@
             reader.readAsText(file);
             event.target.value = '';
         }
+
+        // --- התחלת קוד חדש: שרטוט רקע לעקיבה ---
+        const bgPlanWrapper = document.getElementById('bg-plan-wrapper');
+        const bgPlanImg = document.getElementById('bg-plan-image');
+
+        function loadBgPlan(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                bgPlanImg.onload = () => {
+                    if (!bgPlanImg.naturalWidth) {
+                        showToast("❌ הקובץ נטען אך לא ניתן להציג אותו. נסי לשמור אותו כ-JPG/PNG ולהעלות שוב.");
+                        return;
+                    }
+                    const widthCm = 400;
+                    const heightCm = widthCm * (bgPlanImg.naturalHeight / bgPlanImg.naturalWidth);
+                    document.getElementById('bg-plan-width').value = Math.round(widthCm);
+                    document.getElementById('bg-plan-height').value = Math.round(heightCm);
+                    applyBgPlanSize(widthCm, heightCm);
+                    centerBgPlan();
+                    bgPlanWrapper.style.display = 'block';
+                    document.getElementById('bg-plan-controls').classList.remove('hidden');
+                    updateBgPlanOpacity(document.getElementById('bg-plan-opacity').value);
+                    showToast("שרטוט הרקע נטען! גררי מהמרכז כדי להזיז, ומהנקודות האדומות בפינות כדי להקטין/להגדיל.");
+                };
+                bgPlanImg.onerror = () => {
+                    showToast("❌ לא הצלחתי לטעון את התמונה. ודאי שזה קובץ JPG/PNG תקין (לא HEIC של אייפון).");
+                };
+                bgPlanImg.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+            event.target.value = '';
+        }
+
+        function applyBgPlanSize(widthCm, heightCm) {
+            bgPlanWrapper.style.width = (widthCm * PX_PER_CM) + 'px';
+            bgPlanWrapper.style.height = (heightCm * PX_PER_CM) + 'px';
+        }
+
+        // שינוי רוחב/גובה בנפרד - מאפשר למתוח את התמונה בפרופורציה לא שווה, בלי לזוז ממקומה
+        function updateBgPlanSize() {
+            const widthCm = parseFloat(document.getElementById('bg-plan-width').value) || 400;
+            const heightCm = parseFloat(document.getElementById('bg-plan-height').value) || 400;
+            applyBgPlanSize(widthCm, heightCm);
+        }
+
+        // מעדכן את שדות הרוחב/גובה בס"מ לפי הגודל בפועל של המסגרת (למשל אחרי גרירת נקודה)
+        function syncBgPlanSizeInputs() {
+            const widthCm = Math.round((parseFloat(bgPlanWrapper.style.width) || 0) / PX_PER_CM);
+            const heightCm = Math.round((parseFloat(bgPlanWrapper.style.height) || 0) / PX_PER_CM);
+            document.getElementById('bg-plan-width').value = widthCm;
+            document.getElementById('bg-plan-height').value = heightCm;
+        }
+
+        function centerBgPlan() {
+            const canvasRect = canvas.getBoundingClientRect();
+            const scrollRect = scrollContainer.getBoundingClientRect();
+            const imgW = parseFloat(bgPlanWrapper.style.width) || 0;
+            const imgH = parseFloat(bgPlanWrapper.style.height) || 0;
+
+            const visibleCenterX = scrollRect.left + (scrollRect.width / 2);
+            const visibleCenterY = scrollRect.top + (scrollRect.height / 2);
+
+            const left = visibleCenterX - canvasRect.left - (imgW / 2);
+            const top = visibleCenterY - canvasRect.top - (imgH / 2);
+
+            bgPlanWrapper.style.left = left + 'px';
+            bgPlanWrapper.style.top = top + 'px';
+        }
+
+        function updateBgPlanOpacity(val) {
+            bgPlanImg.style.opacity = val;
+        }
+
+        function removeBgPlan() {
+            bgPlanWrapper.style.display = 'none';
+            bgPlanImg.src = '';
+            document.getElementById('bg-plan-controls').classList.add('hidden');
+            bgPlanLocked = false;
+            bgPlanWrapper.classList.remove('locked', 'selected');
+            document.getElementById('bg-plan-lock-btn').innerText = '🔓 נעל שרטוט (מנע הזזה בטעות)';
+            showToast("שרטוט הרקע הוסר.");
+        }
+
+        // גרירה להזזה, וגרירה מהנקודות בפינות לשינוי גודל (בדיוק כמו בפריטי המטבח)
+        let isDraggingBgPlan = false;
+        let isResizingBgPlan = false;
+        let bgPlanResizeCorner = null;
+        let bgPlanStartX, bgPlanStartY, bgPlanStartLeft, bgPlanStartTop, bgPlanStartWidth, bgPlanStartHeight;
+
+        let bgPlanLocked = false;
+
+        function toggleBgPlanLock() {
+            bgPlanLocked = !bgPlanLocked;
+            bgPlanWrapper.classList.toggle('locked', bgPlanLocked);
+            if (bgPlanLocked) bgPlanWrapper.classList.remove('selected');
+            const btn = document.getElementById('bg-plan-lock-btn');
+            btn.innerText = bgPlanLocked ? '🔒 בטל נעילה' : '🔓 נעל שרטוט (מנע הזזה בטעות)';
+            showToast(bgPlanLocked ? 'שרטוט הרקע ננעל.' : 'שרטוט הרקע שוחרר, ניתן להזיז ולמתוח שוב.');
+        }
+
+        bgPlanWrapper.addEventListener('pointerdown', (e) => {
+            if (bgPlanLocked) return;
+            e.stopPropagation();
+            selectElement(null); // מבטל בחירת פריט אחר
+            bgPlanWrapper.classList.add('selected'); // מציג את נקודות ההזזה/מתיחה של שרטוט הרקע
+            bgPlanWrapper.setPointerCapture(e.pointerId);
+            bgPlanStartX = e.clientX;
+            bgPlanStartY = e.clientY;
+            bgPlanStartLeft = parseFloat(bgPlanWrapper.style.left) || 0;
+            bgPlanStartTop = parseFloat(bgPlanWrapper.style.top) || 0;
+            bgPlanStartWidth = parseFloat(bgPlanWrapper.style.width) || 0;
+            bgPlanStartHeight = parseFloat(bgPlanWrapper.style.height) || 0;
+
+            if (e.target.classList.contains('resize-handle')) {
+                isResizingBgPlan = true;
+                bgPlanResizeCorner = e.target.dataset.corner;
+            } else {
+                isDraggingBgPlan = true;
+            }
+        });
+
+        bgPlanWrapper.addEventListener('pointermove', (e) => {
+            if (!isDraggingBgPlan && !isResizingBgPlan) return;
+            e.preventDefault();
+            const dx = e.clientX - bgPlanStartX;
+            const dy = e.clientY - bgPlanStartY;
+
+            if (isResizingBgPlan) {
+                const growX = (bgPlanResizeCorner === 'ne' || bgPlanResizeCorner === 'se') ? dx : -dx;
+                const growY = (bgPlanResizeCorner === 'sw' || bgPlanResizeCorner === 'se') ? dy : -dy;
+                let newWidth = Math.max(20, bgPlanStartWidth + growX);
+                let newHeight = Math.max(20, bgPlanStartHeight + growY);
+
+                if (bgPlanResizeCorner === 'nw' || bgPlanResizeCorner === 'sw') {
+                    bgPlanWrapper.style.left = (bgPlanStartLeft + (bgPlanStartWidth - newWidth)) + 'px';
+                }
+                if (bgPlanResizeCorner === 'nw' || bgPlanResizeCorner === 'ne') {
+                    bgPlanWrapper.style.top = (bgPlanStartTop + (bgPlanStartHeight - newHeight)) + 'px';
+                }
+
+                bgPlanWrapper.style.width = newWidth + 'px';
+                bgPlanWrapper.style.height = newHeight + 'px';
+            } else if (isDraggingBgPlan) {
+                bgPlanWrapper.style.left = (bgPlanStartLeft + dx) + 'px';
+                bgPlanWrapper.style.top = (bgPlanStartTop + dy) + 'px';
+            }
+        });
+
+        bgPlanWrapper.addEventListener('pointerup', (e) => {
+            if (!isDraggingBgPlan && !isResizingBgPlan) return;
+            if (isResizingBgPlan) syncBgPlanSizeInputs();
+            isDraggingBgPlan = false;
+            isResizingBgPlan = false;
+            bgPlanResizeCorner = null;
+            bgPlanWrapper.releasePointerCapture(e.pointerId);
+        });
+        // --- סוף קוד חדש ---
 
         function closeCodeModal() {
             document.getElementById('code-modal').style.display = 'none';
