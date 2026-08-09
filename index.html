@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>מתכנן מטבחים</title>
+
+    <!-- אייקון הלשונית (favicon) - משטח מטבח בצורת L במבט מלמעלה, עם שני מבערים.
+         מוטבע ישירות בקוד כ-SVG ולא כקובץ נפרד, כך שהוא עובד גם באתר וגם בפתיחת הקובץ מהמחשב. -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231e293b'/%3E%3Cpath d='M6 6h6v14h14v6H6z' fill='%23f1f5f9'/%3E%3Ccircle cx='16.5' cy='23' r='1.7' fill='%23f59e0b'/%3E%3Ccircle cx='22' cy='23' r='1.7' fill='%23f59e0b'/%3E%3C/svg%3E">
+    <meta name="theme-color" content="#1e293b">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -212,6 +218,7 @@
             padding: 10px 8px;
             color: #64748b;
             opacity: 0.75;
+            position: relative;
         }
         .signature a {
             color: inherit;
@@ -220,6 +227,126 @@
             padding-bottom: 1px;
         }
         .signature a:hover { opacity: 1; }
+
+        /* ===== כרטיס קידום הסדנה - נשלף מלמטה, לא חוסם את המסך ===== */
+        #promo-card {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 300px;
+            max-width: calc(100vw - 40px);
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
+            padding: 16px 18px 14px;
+            z-index: 10050;
+            direction: rtl;
+            text-align: right;
+            /* מוסתר כברירת מחדל, מחליק פנימה כשמוסיפים .visible */
+            opacity: 0;
+            transform: translateY(140%);
+            pointer-events: none;
+            transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+        }
+        #promo-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        #promo-card .promo-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0 0 6px;
+            padding-left: 22px; /* מקום לכפתור הסגירה */
+        }
+        #promo-card .promo-text {
+            font-size: 12.5px;
+            line-height: 1.6;
+            color: #475569;
+            margin: 0 0 12px;
+        }
+        /* תמונה אופציונלית בראש הכרטיס */
+        #promo-card .promo-img {
+            display: block;
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 0 0 10px;
+        }
+        /* שורת ההצעה - בולטת בעדינות בלי לצרוח */
+        #promo-card .promo-offer {
+            font-size: 12px;
+            color: #0f172a;
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            padding: 6px 9px;
+            margin: 0 0 12px;
+        }
+        #promo-card .promo-offer b { color: #0369a1; }
+        #promo-card .promo-offer s { color: #94a3b8; }
+        #promo-card .promo-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #promo-card .promo-cta {
+            background: #0284c7;
+            color: #fff;
+            font-size: 12.5px;
+            font-weight: 700;
+            padding: 8px 14px;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: background 0.15s ease;
+        }
+        #promo-card .promo-cta:hover { background: #0369a1; }
+        #promo-card .promo-later {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 12px;
+            cursor: pointer;
+            padding: 6px 4px;
+        }
+        #promo-card .promo-later:hover { color: #64748b; }
+        #promo-close {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 19px;
+            line-height: 1;
+            cursor: pointer;
+            border-radius: 6px;
+        }
+        #promo-close:hover { color: #334155; background: #f1f5f9; }
+
+        @media (max-width: 480px) {
+            #promo-card { left: 12px; right: 12px; width: auto; bottom: 12px; }
+        }
+
+        /* מנעול זעיר ודיסקרטי בפינה - קיצור דרך לדשבורד הסטטיסטיקות */
+        .signature a.stats-lock {
+            position: absolute;
+            left: 5px;
+            bottom: 5px;
+            border-bottom: none;
+            padding: 3px;
+            line-height: 0;
+            opacity: 0.2;
+            transition: opacity 0.15s ease;
+        }
+        .signature a.stats-lock:hover { opacity: 1; }
     </style>
 </head>
 <body class="bg-slate-50 flex flex-row h-[100dvh] text-slate-800">
@@ -573,6 +700,14 @@
             © שירה רוט זליקוביץ · הוראה יצירתית עם AI ·
             <a href="https://wa.me/972523930628" target="_blank" rel="noopener">ווטסאפ</a> ·
             <a href="https://www.lomdot.org/" target="_blank" rel="noopener">להזמנת סדנאות AI</a>
+
+            <!-- קיצור דרך לדשבורד הסטטיסטיקות. הדשבורד עצמו מוגן בהתחברות. -->
+            <a class="stats-lock" href="https://kitchens.goatcounter.com" target="_blank" rel="noopener" title="סטטיסטיקות" aria-label="סטטיסטיקות">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="11" width="16" height="10" rx="2"></rect>
+                    <path d="M8 11V7a4 4 0 0 1 8 0v4"></path>
+                </svg>
+            </a>
         </footer>
     </aside>
 
@@ -590,6 +725,25 @@
     </main>
 
     <div id="toast">הפריט נוסף בהצלחה למרכז הלוח!</div>
+
+    <!-- ===== כרטיס קידום הסדנה. מופיע רק אחרי שהמשתמש קיבל ערך, פעם אחת בביקור. ===== -->
+    <div id="promo-card" role="dialog" aria-modal="false" aria-labelledby="promo-title-text">
+        <button id="promo-close" aria-label="סגור">&times;</button>
+        <p class="promo-title" id="promo-title-text">את הכלי הזה בניתי עם AI</p>
+        <p class="promo-text">בסדרת הסדנאות "נפלאות הבינה" אני מלמדת לבנות אתרים וכלים כאלה - גם בלי רקע בתכנות.</p>
+
+        <!-- אם תרצי להוסיף תמונה, להסיר את ההערה ולשים כתובת תמונה (רצוי רוחבית וקלה):
+        <img class="promo-img" src="https://shirazel.github.io/ai-maraton/ההתמונה.png" alt="">
+        -->
+
+        <!-- שימי לב: המחירים כאן קבועים בקוד. אם תעדכני מחירים בדף הנחיתה, לעדכן גם כאן. -->
+        <p class="promo-offer">9 סדנאות מוקלטות + סדנת בונוס · <b>₪350</b> <s>₪450</s></p>
+
+        <div class="promo-actions">
+            <a class="promo-cta" id="promo-cta-link" href="https://shirazel.github.io/ai-maraton/?utm_source=kitchen-planner&utm_medium=promo&utm_campaign=nifleot" target="_blank" rel="noopener">אני רוצה לשמוע עוד</a>
+            <button class="promo-later" id="promo-later">לא עכשיו</button>
+        </div>
+    </div>
 
     <div id="scene-3d-container">
         <button id="close-3d-btn" onclick="close3DView()">חזור לשרטוט</button>
@@ -1591,11 +1745,66 @@
             return tex;
         }
 
+        // --- התחלת קוד חדש: כרטיס קידום הסדנה ---
+        // מוצג רק אחרי שהמשתמש קיבל ערך אמיתי (ראה הדמיה / הוריד קובץ), פעם אחת בביקור.
+        // מי שסגר - לא יראה שוב 30 יום. מי שלחץ - לא יראה שוב בכלל.
+        const PROMO_DISMISS_DAYS = 30;
+        let promoShownThisSession = false;
+
+        // localStorage עלול להיות חסום (גלישה פרטית) - עוטפים כדי שהאתר לא ייפול
+        function promoStore(action, key, value) {
+            try {
+                if (action === 'get') return localStorage.getItem(key);
+                if (action === 'set') localStorage.setItem(key, value);
+            } catch (e) { /* אין גישה לאחסון - נתעלם */ }
+            return null;
+        }
+
+        function promoIsSuppressed() {
+            if (promoStore('get', 'promoClicked') === '1') return true;
+            const until = parseInt(promoStore('get', 'promoDismissedUntil') || '0', 10);
+            return Date.now() < until;
+        }
+
+        function showPromo(delayMs) {
+            if (promoShownThisSession || promoIsSuppressed()) return;
+            promoShownThisSession = true;
+            setTimeout(() => {
+                const card = document.getElementById('promo-card');
+                if (card) card.classList.add('visible');
+            }, delayMs || 0);
+        }
+
+        function hidePromo(rememberDays) {
+            const card = document.getElementById('promo-card');
+            if (card) card.classList.remove('visible');
+            if (rememberDays) {
+                promoStore('set', 'promoDismissedUntil', String(Date.now() + rememberDays * 24 * 60 * 60 * 1000));
+            }
+        }
+
+        document.getElementById('promo-close').addEventListener('click', () => hidePromo(PROMO_DISMISS_DAYS));
+        document.getElementById('promo-later').addEventListener('click', () => hidePromo(PROMO_DISMISS_DAYS));
+        document.getElementById('promo-cta-link').addEventListener('click', () => {
+            promoStore('set', 'promoClicked', '1'); // לחץ - לא נציק לו יותר
+            hidePromo(0);
+        });
+
+        // Esc סוגר את הכרטיס (נגישות)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && document.getElementById('promo-card').classList.contains('visible')) {
+                hidePromo(PROMO_DISMISS_DAYS);
+            }
+        });
+        // --- סוף קוד חדש ---
+
         function open3DView() {
             // דוחף היסטוריה מזויפת כדי שכפתור 'אחורה' בנייד יתפוס אותה
             history.pushState({ modal: '3d' }, '3D View');
             document.getElementById('scene-3d-container').style.display = 'block';
             init3D();
+            // נותנים למשתמש ליהנות מההדמיה קודם, ורק אחר כך מציעים את הסדנה
+            showPromo(9000);
         }
 
         function close3DView(fromPopState = false) {
@@ -1920,11 +2129,12 @@
 
                     // ברז - לאיזה קיר הכיור צמוד קובע לאיזה צד הברז מוצמד (front=ברירת מחדל/קיר אחורי, back=קיר קדמי, right/left=קיר צד)
                     const sinkFaceDir = resolveFaceDir(el.dataset.front, x, z, w, d);
+                    // resolveFaceDir מחזיר את הכיוון שאליו החזית פונה - כלומר ההפוך מהקיר. הברז תמיד בצד הקיר.
                     let faucetX = 0, faucetZ = 0, faucetOnX = false;
-                    if (sinkFaceDir === 'back') { faucetZ = d / 2 - lipD / 2; }
-                    else if (sinkFaceDir === 'right') { faucetX = w / 2 - lipW / 2; faucetOnX = true; }
-                    else if (sinkFaceDir === 'left') { faucetX = -w / 2 + lipW / 2; faucetOnX = true; }
-                    else { faucetZ = -d / 2 + lipD / 2; } // 'front' (ברירת מחדל) - כמו שהיה תמיד: צמוד לרצועה האחורית
+                    if (sinkFaceDir === 'back') { faucetZ = d / 2 - lipD / 2; }        // חזית לאחור -> קיר ב-+Z
+                    else if (sinkFaceDir === 'right') { faucetX = -w / 2 + lipW / 2; faucetOnX = true; } // חזית ימינה -> קיר ב--X
+                    else if (sinkFaceDir === 'left') { faucetX = w / 2 - lipW / 2; faucetOnX = true; }   // חזית שמאלה -> קיר ב-+X
+                    else { faucetZ = -d / 2 + lipD / 2; } // 'front' - חזית קדימה -> קיר ב--Z
 
                     const riserHeight = 26;
                     const riserGeo = new THREE.CylinderGeometry(1.4, 1.4, riserHeight, 12);
@@ -2227,6 +2437,7 @@
                     } else {
                         buildWallSeg(wallMin, wallMax, 0, h);
                     }
+
                 } else {
 
                 const geo = new THREE.BoxGeometry(w, h, d);
@@ -2622,6 +2833,7 @@
             a.click();
             document.body.removeChild(a);
             showToast('צילום המסך הורד! 📸');
+            showPromo(1500); // רגע של הצלחה - המשתמש לוקח איתו תוצר
         }
         // --- סוף קוד חדש ---
 
@@ -2760,6 +2972,7 @@ Camera: wide-angle interior architectural photography, eye-level, sharp focus, r
             document.execCommand('copy');
             showToast("הפרומפט הועתק! הדביקי אותו בכלי ליצירת תמונות, ויש לצרף גם את תמונת ההדמיה.");
             closeCodeModal();
+            showPromo(1500);
         }
         // --- סוף קוד חדש ---
 
@@ -2840,9 +3053,18 @@ funcSources + '\n\n' +
             URL.revokeObjectURL(url);
 
             showToast('ההדמיה הורדה למחשב! 🎉');
+            showPromo(1500);
         }
         // --- סוף קוד חדש ---
 
     </script>
+
+    <!-- ===================== מונה כניסות (GoatCounter) =====================
+         סופר כניסות רק כשהאתר פתוח מהכתובת באינטרנט (GitHub Pages),
+         לא בפתיחת הקובץ מהמחשב.
+         את הנתונים רואים בדשבורד: https://kitchens.goatcounter.com
+    ==================================================================== -->
+    <script data-goatcounter="https://kitchens.goatcounter.com/count"
+            async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>
