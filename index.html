@@ -379,6 +379,7 @@
         }
         #privacy-notice-ok:hover { background: #1e293b; }
 
+
         /* מנעול זעיר ודיסקרטי בפינה - קיצור דרך לדשבורד הסטטיסטיקות */
         .signature a.stats-lock {
             position: absolute;
@@ -392,6 +393,39 @@
         }
         .signature a.stats-lock:hover { opacity: 1; }
     </style>
+
+    <!-- ===== Meta Pixel =====
+         אותו מזהה כמו בדף הנחיתה, כדי שהקהלים יצטברו יחד.
+         הפיקסל מניח עוגייה ושולח נתונים לפייסבוק, ולכן הוא נטען אך ורק
+         אחרי הסכמה מפורשת. בלי הסכמה הוא לא נטען בכלל - לא רק "לא יורה".
+         GoatCounter ממשיך לרוץ תמיד: הוא ללא עוגיות וללא מידע מזהה. -->
+    <script>
+        const META_PIXEL_ID = '1570858901290276';
+        let metaPixelLoaded = false;
+
+        function loadMetaPixel() {
+            if (metaPixelLoaded) return;
+            metaPixelLoaded = true;
+            !function(f,b,e,v,n,t,s)
+            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+            n.queue=[];t=b.createElement(e);t.async=!0;
+            t.src=v;s=b.getElementsByTagName(e)[0];
+            s.parentNode.insertBefore(t,s)}(window,document,'script',
+            'https://connect.facebook.net/en_US/fbevents.js');
+            fbq('init', META_PIXEL_ID);
+            fbq('track', 'PageView');
+        }
+
+        function marketingConsentGiven() {
+            try { return localStorage.getItem('marketingConsent') === '1'; }
+            catch (e) { return false; }
+        }
+
+        // מבקר חוזר שכבר אישר - טוענים מיד, בלי לשאול שוב.
+        if (marketingConsentGiven()) loadMetaPixel();
+    </script>
 </head>
 <body class="bg-slate-50 flex flex-row h-[100dvh] text-slate-800">
 
@@ -773,10 +807,10 @@
 
     <!-- ===== הודעת פרטיות. מוצגת פעם אחת בלבד, ואינה חוסמת את השימוש באתר. ===== -->
     <div id="privacy-notice" role="region" aria-label="הודעת פרטיות">
-        <span>התוכניות שלך נשמרות רק במחשב שלך. האתר מודד כניסות בצורה אנונימית, ללא עוגיות.
+        <span>האתר עשוי להשתמש בעוגיות.
             <button class="privacy-link" onclick="openPrivacyModal()">מדיניות פרטיות</button>
         </span>
-        <button id="privacy-notice-ok">הבנתי</button>
+        <button id="privacy-notice-ok">אישור</button>
     </div>
 
     <!-- ===== כרטיס קידום הסדנה. מופיע רק אחרי שהמשתמש קיבל ערך, פעם אחת בביקור. ===== -->
@@ -840,7 +874,13 @@
 
                 <div>
                     <h3 class="font-bold text-slate-800 mb-1">סטטיסטיקות שימוש</h3>
-                    <p>אנחנו מודדים כמה אנשים נכנסו לאתר באמצעות GoatCounter. השירות <b>אינו משתמש בעוגיות</b> ואינו שומר כתובות IP או מידע מזהה. נאסף מידע כללי בלבד: מספר צפיות, הקישור שממנו הגעת, סוג הדפדפן, גודל המסך והמדינה.</p>
+                    <p>אנחנו מודדים כמה אנשים נכנסו לאתר באמצעות GoatCounter. השירות <b>אינו משתמש בעוגיות</b> ואינו שומר כתובות IP או מידע מזהה. נאסף מידע כללי בלבד: מספר צפיות, הקישור שממנו הגעת, סוג הדפדפן, גודל המסך והמדינה. המדידה הזו פועלת תמיד, ואינה תלויה בהסכמה לעוגיות פרסום.</p>
+                </div>
+
+                <div>
+                    <h3 class="font-bold text-slate-800 mb-1">עוגיות פרסום, רק בהסכמה</h3>
+                    <p>אם אישרת זאת בהודעה שמופיעה בכניסה, האתר טוען את פיקסל המדידה של מטא (פייסבוק ואינסטגרם). הפיקסל מניח עוגייה בדפדפן שלך ומדווח למטא על הכניסה לאתר ועל לחיצה על הצעת הסדנאות, כדי שנוכל להציג לך מודעות רלוונטיות ולמדוד את הפרסום שלנו. <b>בלי אישור, הפיקסל אינו נטען כלל.</b></p>
+                    <p>אפשר לשנות את הבחירה בכל רגע: <button class="privacy-link" onclick="resetMarketingConsent()">איפוס הבחירה בעוגיות פרסום</button>. לאחר האיפוס, רענון הדף יציג שוב את ההודעה.</p>
                 </div>
 
                 <div>
@@ -1873,6 +1913,10 @@
             setTimeout(() => {
                 const card = document.getElementById('promo-card');
                 if (card) card.classList.add('visible');
+                // הכרטיס מופיע רק אחרי מעורבות עמוקה, ולכן חלק מהמבקרים לא רואים
+                // אותו בכלל. בלי לספור הצגות אי אפשר לדעת אם בעיית ההמרה היא
+                // בכרטיס עצמו או בכך שלא מגיעים אליו.
+                trackPromo('promo-shown', 'ViewContent');
             }, delayMs || 0);
         }
 
@@ -1888,8 +1932,24 @@
         document.getElementById('promo-later').addEventListener('click', () => hidePromo(PROMO_DISMISS_DAYS));
         document.getElementById('promo-cta-link').addEventListener('click', () => {
             promoStore('set', 'promoClicked', '1'); // לחץ - לא נציק לו יותר
+            trackPromo('promo-cta-click', 'Lead');
             hidePromo(0);
         });
+
+        /**
+         * מדווח על אירוע לשני מקומות: GoatCounter לספירה, ומטא לאופטימיזציה.
+         * עטוף ב-try כדי שחוסם פרסומות לא יפיל שום דבר בעמוד.
+         */
+        function trackPromo(name, metaEvent) {
+            try {
+                if (window.goatcounter && window.goatcounter.count) {
+                    window.goatcounter.count({ path: name, title: name, event: true });
+                }
+            } catch (e) { /* אין אנליטיקס - ממשיכים */ }
+            try {
+                if (window.fbq) fbq('track', metaEvent);
+            } catch (e) { /* הפיקסל חסום - ממשיכים */ }
+        }
 
         // Esc סוגר את הכרטיס (נגישות)
         document.addEventListener('keydown', (e) => {
@@ -2944,10 +3004,25 @@
             promoStore('set', 'privacyNoticeSeen', '1');
         }
 
-        document.getElementById('privacy-notice-ok').addEventListener('click', dismissPrivacyNotice);
+        /** מאשרת: שומרים את ההסכמה וטוענים את הפיקסל כאן ועכשיו. */
+        document.getElementById('privacy-notice-ok').addEventListener('click', () => {
+            promoStore('set', 'marketingConsent', '1');
+            loadMetaPixel();
+            dismissPrivacyNotice();
+        });
 
-        // מוצג פעם אחת בלבד, לכל דפדפן
-        if (promoStore('get', 'privacyNoticeSeen') !== '1') {
+        /**
+         * מאפשר למשתמש לחזור בו. מוחק את ההסכמה כדי שההודעה תוצג שוב.
+         * הפיקסל שכבר נטען בטאב הזה ימשיך לרוץ עד רענון - לכן מרעננים.
+         */
+        function resetMarketingConsent() {
+            try { localStorage.removeItem('marketingConsent'); } catch (e) { /* חסום */ }
+            location.reload();
+        }
+
+        // נשאל פעם אחת לכל דפדפן. מפתח ההסכמה נפרד מ-privacyNoticeSeen הישן,
+        // כדי שגם מי שכבר סגר את ההודעה הקודמת יישאל על עוגיות הפרסום.
+        if (promoStore('get', 'marketingConsent') === null) {
             document.getElementById('privacy-notice').classList.add('visible');
         }
         // --- סוף קוד חדש ---
