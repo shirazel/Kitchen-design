@@ -335,6 +335,50 @@
             #promo-card { left: 12px; right: 12px; width: auto; bottom: 12px; }
         }
 
+        /* ===== הודעת פרטיות חד-פעמית (פס דק בתחתית, לא חוסם) ===== */
+        #privacy-notice {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+            background: #fff;
+            border-top: 1px solid #e2e8f0;
+            box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08);
+            padding: 10px 16px;
+            font-size: 12px;
+            color: #475569;
+            direction: rtl;
+            text-align: center;
+            z-index: 10060;
+        }
+        #privacy-notice.visible { display: flex; }
+        #privacy-notice .privacy-link {
+            background: none;
+            border: none;
+            padding: 0;
+            font: inherit;
+            color: #0369a1;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        #privacy-notice-ok {
+            background: #0f172a;
+            color: #fff;
+            border: none;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 6px 16px;
+            border-radius: 7px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        #privacy-notice-ok:hover { background: #1e293b; }
+
         /* מנעול זעיר ודיסקרטי בפינה - קיצור דרך לדשבורד הסטטיסטיקות */
         .signature a.stats-lock {
             position: absolute;
@@ -700,6 +744,7 @@
             © שירה רוט זליקוביץ · הוראה יצירתית עם AI ·
             <a href="https://wa.me/972523930628" target="_blank" rel="noopener">ווטסאפ</a> ·
             <a href="https://www.lomdot.org/" target="_blank" rel="noopener">להזמנת סדנאות AI</a>
+            <br><a href="#" onclick="openPrivacyModal(); return false;">מדיניות פרטיות</a>
 
             <!-- קיצור דרך לדשבורד הסטטיסטיקות. הדשבורד עצמו מוגן בהתחברות. -->
             <a class="stats-lock" href="https://kitchens.goatcounter.com" target="_blank" rel="noopener" title="סטטיסטיקות" aria-label="סטטיסטיקות">
@@ -725,6 +770,14 @@
     </main>
 
     <div id="toast">הפריט נוסף בהצלחה למרכז הלוח!</div>
+
+    <!-- ===== הודעת פרטיות. מוצגת פעם אחת בלבד, ואינה חוסמת את השימוש באתר. ===== -->
+    <div id="privacy-notice" role="region" aria-label="הודעת פרטיות">
+        <span>התוכניות שלך נשמרות רק במחשב שלך. האתר מודד כניסות בצורה אנונימית, ללא עוגיות.
+            <button class="privacy-link" onclick="openPrivacyModal()">מדיניות פרטיות</button>
+        </span>
+        <button id="privacy-notice-ok">הבנתי</button>
+    </div>
 
     <!-- ===== כרטיס קידום הסדנה. מופיע רק אחרי שהמשתמש קיבל ערך, פעם אחת בביקור. ===== -->
     <div id="promo-card" role="dialog" aria-modal="false" aria-labelledby="promo-title-text">
@@ -768,6 +821,52 @@
     <!-- סוף קוד חדש -->
 
     <!-- התחלת קוד חדש: מודל הוראות הפעלה -->
+    <!-- ===================== מדיניות פרטיות ===================== -->
+    <div id="privacy-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[20000] hidden items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-xl shadow-xl w-11/12 max-w-lg max-h-[85vh] flex flex-col gap-3">
+            <h2 class="text-xl font-bold text-slate-800 text-center shrink-0">מדיניות פרטיות</h2>
+            <div class="overflow-y-auto text-sm text-slate-700 space-y-3 pr-1">
+                <p class="text-xs text-slate-500">עדכון אחרון: אוגוסט 2026</p>
+
+                <div>
+                    <h3 class="font-bold text-slate-800 mb-1">התוכניות שלך נשארות אצלך</h3>
+                    <p>המתכנן עובד כולו בתוך הדפדפן שלך. השרטוטים שאת בונה, המידות והתמונות אינם נשלחים לשום שרת ואינם נשמרים אצלנו. כשאת לוחצת "שמור כקובץ", הקובץ נשמר במחשב שלך בלבד.</p>
+                </div>
+
+                <div>
+                    <h3 class="font-bold text-slate-800 mb-1">תמונת תוכנית שאת מעלה</h3>
+                    <p>תמונה שאת מעלה כשרטוט רקע נטענת בדפדפן שלך בלבד ואינה מועלית לאינטרנט.</p>
+                </div>
+
+                <div>
+                    <h3 class="font-bold text-slate-800 mb-1">סטטיסטיקות שימוש</h3>
+                    <p>אנחנו מודדים כמה אנשים נכנסו לאתר באמצעות GoatCounter. השירות <b>אינו משתמש בעוגיות</b> ואינו שומר כתובות IP או מידע מזהה. נאסף מידע כללי בלבד: מספר צפיות, הקישור שממנו הגעת, סוג הדפדפן, גודל המסך והמדינה.</p>
+                </div>
+
+                <div>
+                    <h3 class="font-bold text-slate-800 mb-1">שירותים חיצוניים שהאתר טוען</h3>
+                    <p>כדי לעבוד, האתר טוען גופנים וקוד משירותים חיצוניים: Google Fonts, Tailwind CSS ו-Three.js. כשהדפדפן שלך פונה אליהם, השירותים האלה רואים את כתובת ה-IP שלך, בהתאם למדיניות הפרטיות שלהם. אנחנו לא מעבירים אליהם שום מידע נוסף עליך.</p>
+                </div>
+
+                <div>
+                    <h3 class="font-bold text-slate-800 mb-1">אחסון מקומי בדפדפן</h3>
+                    <p>אם סגרת את ההודעה על הסדנה, הדפדפן זוכר את זה כדי לא להציג לך אותה שוב. המידע הזה נשמר רק במחשב שלך ולא נשלח לאף מקום. מחיקת נתוני הדפדפן מוחקת גם אותו.</p>
+                </div>
+
+                <div>
+                    <h3 class="font-bold text-slate-800 mb-1">קישורים חיצוניים</h3>
+                    <p>באתר יש קישורים לוואטסאפ, לאתר שלי ולדף הסדנאות. לחיצה עליהם מעבירה אותך לאתר אחר, שחלה עליו מדיניות פרטיות משלו.</p>
+                </div>
+
+                <div>
+                    <h3 class="font-bold text-slate-800 mb-1">שאלות</h3>
+                    <p>לכל שאלה בנושא פרטיות אפשר לפנות אליי דרך <a class="text-sky-700 underline" href="https://wa.me/972523930628" target="_blank" rel="noopener">וואטסאפ</a>.</p>
+                </div>
+            </div>
+            <button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow shrink-0" onclick="closePrivacyModal()">סגור</button>
+        </div>
+    </div>
+
     <div id="help-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[20000] hidden items-center justify-center p-4">
         <div class="bg-white p-6 rounded-xl shadow-xl w-11/12 max-w-lg max-h-[85vh] flex flex-col gap-3">
             <h2 class="text-xl font-bold text-slate-800 text-center shrink-0">הוראות הפעלה 📖</h2>
@@ -1768,6 +1867,8 @@
 
         function showPromo(delayMs) {
             if (promoShownThisSession || promoIsSuppressed()) return;
+            // לא מציגים שני דברים בתחתית המסך בבת אחת - הודעת הפרטיות קודמת
+            if (privacyNoticeIsVisible()) return;
             promoShownThisSession = true;
             setTimeout(() => {
                 const card = document.getElementById('promo-card');
@@ -2820,6 +2921,36 @@
             modal.style.display = 'none';
             modal.classList.add('hidden');
         }
+
+        // --- התחלת קוד חדש: מדיניות פרטיות והודעה חד-פעמית ---
+        function openPrivacyModal() {
+            const modal = document.getElementById('privacy-modal');
+            modal.style.display = 'flex';
+            modal.classList.remove('hidden');
+        }
+
+        function closePrivacyModal() {
+            const modal = document.getElementById('privacy-modal');
+            modal.style.display = 'none';
+            modal.classList.add('hidden');
+        }
+
+        function privacyNoticeIsVisible() {
+            return document.getElementById('privacy-notice').classList.contains('visible');
+        }
+
+        function dismissPrivacyNotice() {
+            document.getElementById('privacy-notice').classList.remove('visible');
+            promoStore('set', 'privacyNoticeSeen', '1');
+        }
+
+        document.getElementById('privacy-notice-ok').addEventListener('click', dismissPrivacyNotice);
+
+        // מוצג פעם אחת בלבד, לכל דפדפן
+        if (promoStore('get', 'privacyNoticeSeen') !== '1') {
+            document.getElementById('privacy-notice').classList.add('visible');
+        }
+        // --- סוף קוד חדש ---
 
         // --- התחלת קוד חדש: צילום מסך של התלת-מימד ---
         function takeScreenshot3D() {
